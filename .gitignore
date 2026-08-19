@@ -7,4 +7,5 @@ node_modules
 .env.production
 .dev.vars
 wrangler.toml
+*.tsbuildinfo
 .DS_Store
