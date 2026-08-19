@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "skillswap" generated at 2026-08-19T16:25:41.391Z.
