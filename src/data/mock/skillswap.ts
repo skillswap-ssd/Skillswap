@@ -1,46 +1,44 @@
 import type { CategoryChipTone } from "@/components/shared/category-chip";
 import type { Match, Notification, Profile, Review, Skill, SkillCategory, SkillOffer, SkillRequest, User } from "../models";
-
+export const currentUserId = "u2";
 export const categories: SkillCategory[] = [
-  { id: "tech", name: "Code & systems", tone: "tech" },
-  { id: "craft", name: "Visual craft", tone: "craft" },
-  { id: "voice", name: "Voice & presence", tone: "voice" },
-  { id: "motion", name: "Moving image", tone: "motion" },
-  { id: "business", name: "Market fluency", tone: "business" },
+ { id:"tech", name:"Technology", tone:"tech", description:"Code, automation, data, systems, and tools." },{ id:"design", name:"Design", tone:"craft", description:"Visual systems, product craft, and critique." },{ id:"business", name:"Business", tone:"business", description:"Marketing, selling, finance, and strategy." },{ id:"languages", name:"Languages", tone:"voice", description:"Conversation, writing, pronunciation, and culture." },{ id:"music", name:"Music", tone:"voice", description:"Instruments, voice, production, and performance." },{ id:"creative", name:"Creative", tone:"craft", description:"Photography, writing, illustration, and making." },{ id:"communication", name:"Communication", tone:"voice", description:"Speaking, facilitation, presence, and feedback." },{ id:"academic", name:"Academic", tone:"tech", description:"Research, math, study systems, and tutoring." },{ id:"lifestyle", name:"Lifestyle", tone:"business", description:"Wellness, cooking, travel, and everyday practices." },{ id:"practical", name:"Practical Skills", tone:"motion", description:"Hands-on repairs, organizing, and useful craft." }
 ];
 export const skills: Skill[] = [
-  { id: "python", name: "Python", categoryId: "tech", level: "advanced", description: "Build scripts, prototypes, and data tools with calm fundamentals." },
-  { id: "video", name: "Video Editing", categoryId: "motion", level: "intermediate", description: "Cut tighter stories for reels, launches, and documentaries." },
-  { id: "photo", name: "Photography", categoryId: "craft", level: "expert", description: "Find light, compose scenes, and make people comfortable." },
-  { id: "guitar", name: "Guitar", categoryId: "voice", level: "intermediate", description: "Learn rhythm, taste, and songs that survive a campfire." },
-  { id: "graphic", name: "Graphic Design", categoryId: "craft", level: "advanced", description: "Design systems, posters, identities, and sharper layouts." },
-  { id: "speaking", name: "Public Speaking", categoryId: "voice", level: "expert", description: "Turn nerves into presence and structure ideas that land." },
-  { id: "3d", name: "3D Design", categoryId: "craft", level: "beginner", description: "Model useful objects and expressive scenes from primitives." },
-  { id: "marketing", name: "Digital Marketing", categoryId: "business", level: "advanced", description: "Understand channels, positioning, experiments, and momentum." },
+ {id:"python",name:"Python",categoryId:"tech",level:"advanced",description:"Build scripts, prototypes, and data tools with calm fundamentals.",tags:["automation","data","backend"],popularity:128,relatedSkillIds:["data","web"],learningGoals:["Automate a workflow","Build a small app"],formats:["remote","hybrid"]},
+ {id:"video",name:"Video Editing",categoryId:"creative",level:"intermediate",description:"Cut tighter stories for reels, launches, and documentaries.",tags:["story","reels","premiere"],popularity:96,relatedSkillIds:["photo","design"],formats:["remote","hybrid"]},
+ {id:"photo",name:"Photography",categoryId:"creative",level:"expert",description:"Find light, compose scenes, and make people comfortable.",tags:["portraits","lighting","critique"],popularity:84,relatedSkillIds:["video","design"],formats:["in-person","hybrid"]},
+ {id:"guitar",name:"Guitar",categoryId:"music",level:"intermediate",description:"Learn rhythm, taste, and songs that survive a campfire.",tags:["music","practice","chords"],popularity:73,relatedSkillIds:["speaking"],formats:["in-person","remote"]},
+ {id:"design",name:"Graphic Design",categoryId:"design",level:"advanced",description:"Design systems, posters, identities, and sharper layouts.",tags:["brand","layout","typography"],popularity:118,relatedSkillIds:["photo","video"],formats:["remote"]},
+ {id:"speaking",name:"Public Speaking",categoryId:"communication",level:"expert",description:"Turn nerves into presence and structure ideas that land.",tags:["confidence","talks","story"],popularity:101,relatedSkillIds:["guitar","marketing"],formats:["hybrid","remote"]},
+ {id:"marketing",name:"Digital Marketing",categoryId:"business",level:"advanced",description:"Understand channels, positioning, experiments, and momentum.",tags:["growth","positioning","analytics"],popularity:89,relatedSkillIds:["design","data"],formats:["remote"]},
+ {id:"spanish",name:"Conversational Spanish",categoryId:"languages",level:"intermediate",description:"Practice useful conversation, pronunciation, and travel confidence.",tags:["language","conversation"],popularity:110,relatedSkillIds:["speaking"],formats:["remote","in-person"]},
+ {id:"data",name:"Data Analysis",categoryId:"academic",level:"beginner",description:"Ask better questions with spreadsheets, charts, and basic statistics.",tags:["sheets","charts","research"],popularity:77,relatedSkillIds:["python","marketing"],formats:["remote"]}
 ];
 export const users: User[] = [
-  { id: "u1", username: "mara", name: "Mara Chen", location: "Oakland", reputation: 4.9 },
-  { id: "u2", username: "ezra", name: "Ezra Vale", location: "Brooklyn", reputation: 4.7 },
-  { id: "u3", username: "noor", name: "Noor Malik", location: "Chicago", reputation: 4.8 },
-];
-export const profiles: Profile[] = [
-  { userId: "u1", headline: "Photographer trading visual taste for Python fluency.", bio: "Editorial portraits, calm critique, and practical project energy.", offers: ["o1"], requests: ["r1"], interests: ["python", "3d"] },
-  { userId: "u2", headline: "Developer who wants to sound better on stage.", bio: "Automation, APIs, debugging, and patient explanations.", offers: ["o2"], requests: ["r2"], interests: ["speaking", "guitar"] },
-  { userId: "u3", headline: "Brand designer building a video practice.", bio: "Identity systems, typography, decks, and structured feedback.", offers: ["o3"], requests: ["r3"], interests: ["video", "marketing"] },
+ {id:"u1",username:"mara",name:"Mara Chen",location:"Oakland",reputation:4.9,completedSwaps:24,responseRate:96,availability:"Weekends",interests:["street walks","zines","automation"]},
+ {id:"u2",username:"ezra",name:"Ezra Vale",location:"Brooklyn",reputation:4.7,completedSwaps:18,responseRate:91,availability:"Weeknights",interests:["APIs","music","clear explanations"]},
+ {id:"u3",username:"noor",name:"Noor Malik",location:"Chicago",reputation:4.8,completedSwaps:31,responseRate:94,availability:"Flexible",interests:["brand systems","film","founders"]},
+ {id:"u4",username:"lina",name:"Lina Ortega",location:"Austin",reputation:4.6,completedSwaps:12,responseRate:88,availability:"Lunch hours",interests:["travel","language cafés","teaching"]},
+ {id:"u5",username:"samir",name:"Samir Patel",location:"Seattle",reputation:4.9,completedSwaps:27,responseRate:98,availability:"Remote mornings",interests:["analytics","cooking","experiments"]}
 ];
 export const offers: SkillOffer[] = [
-  { id: "o1", userId: "u1", skillId: "photo", format: "hybrid", summary: "A two-hour photo walk and critique." },
-  { id: "o2", userId: "u2", skillId: "python", format: "remote", summary: "Pair on a real automation problem." },
-  { id: "o3", userId: "u3", skillId: "graphic", format: "remote", summary: "Logo and layout feedback with references." },
+ {id:"o1",userId:"u1",skillId:"photo",level:"expert",format:"hybrid",summary:"A two-hour photo walk and critique.",experience:"10 years editorial and portrait work"},{id:"o2",userId:"u2",skillId:"python",level:"advanced",format:"remote",summary:"Pair on a real automation problem.",experience:"8 years building internal tools"},{id:"o3",userId:"u3",skillId:"design",level:"advanced",format:"remote",summary:"Logo and layout feedback with references.",experience:"Led identity work for startups"},{id:"o4",userId:"u4",skillId:"spanish",level:"advanced",format:"hybrid",summary:"Conversation practice with gentle correction.",experience:"Native speaker and community tutor"},{id:"o5",userId:"u5",skillId:"data",level:"advanced",format:"remote",summary:"Turn messy sheets into useful decisions.",experience:"Growth analyst and dashboard builder"},{id:"o6",userId:"u5",skillId:"marketing",level:"advanced",format:"remote",summary:"Plan one practical campaign experiment.",experience:"7 years lifecycle marketing"}
 ];
 export const requests: SkillRequest[] = [
-  { id: "r1", userId: "u1", skillId: "python", goal: "Automate client gallery cleanup.", urgency: "medium" },
-  { id: "r2", userId: "u2", skillId: "speaking", goal: "Practice a conference talk.", urgency: "high" },
-  { id: "r3", userId: "u3", skillId: "video", goal: "Edit a brand case-study reel.", urgency: "low" },
+ {id:"r1",userId:"u1",skillId:"python",goal:"Automate client gallery cleanup.",urgency:"medium",level:"beginner",format:"remote"},{id:"r2",userId:"u2",skillId:"speaking",goal:"Practice a conference talk.",urgency:"high",level:"intermediate",format:"hybrid"},{id:"r3",userId:"u3",skillId:"video",goal:"Edit a brand case-study reel.",urgency:"low",level:"beginner",format:"remote"},{id:"r4",userId:"u4",skillId:"guitar",goal:"Play songs with friends.",urgency:"low",level:"beginner",format:"in-person"},{id:"r5",userId:"u5",skillId:"design",goal:"Improve marketing landing pages.",urgency:"medium",level:"beginner",format:"remote"}
 ];
-export const matches: Match[] = [{ id: "m1", offerId: "o2", requestId: "r1", score: 92, reason: "Python automation for photography workflow" }];
-export const reviews: Review[] = [{ id: "rev1", authorId: "u2", recipientId: "u1", rating: 5, body: "Generous, precise, and easy to learn with.", createdAt: "2026-08-01" }];
-export const notifications: Notification[] = [{ id: "n1", userId: "u1", type: "match", title: "Ezra may be a strong Python exchange", read: false, createdAt: "2026-08-18" }];
-export const toneFor = (categoryId: string): CategoryChipTone => (categories.find((c) => c.id === categoryId)?.tone ?? "craft") as CategoryChipTone;
-export const getSkill = (id: string) => skills.find((skill) => skill.id === id);
-export const getUser = (username: string) => users.find((user) => user.username === username);
+export const profiles: Profile[] = [
+ {userId:"u1",headline:"Photographer trading visual taste for Python fluency.",bio:"Editorial portraits, calm critique, and practical project energy.",offers:["o1"],requests:["r1"],learningStyle:"Project-based",preference:"hybrid"},{userId:"u2",headline:"Developer who wants to sound better on stage.",bio:"Automation, APIs, debugging, and patient explanations.",offers:["o2"],requests:["r2"],learningStyle:"Pairing",preference:"remote"},{userId:"u3",headline:"Brand designer building a video practice.",bio:"Identity systems, typography, decks, and structured feedback.",offers:["o3"],requests:["r3"],learningStyle:"Critique",preference:"remote"},{userId:"u4",headline:"Spanish coach looking for music confidence.",bio:"Warm conversation practice for people who want to actually speak.",offers:["o4"],requests:["r4"],learningStyle:"Conversation",preference:"hybrid"},{userId:"u5",headline:"Data marketer trading measurement for better visuals.",bio:"I like useful experiments, readable charts, and practical sessions.",offers:["o5","o6"],requests:["r5"],learningStyle:"Examples first",preference:"remote"}
+];
+export const matches: Match[] = [{id:"m1",offerId:"o2",requestId:"r1",reciprocalOfferId:"o1",reciprocalRequestId:"r2",score:92,reason:"Mara wants Python and Ezra wants stronger live presence/creative feedback."},{id:"m2",offerId:"o3",requestId:"r5",reciprocalOfferId:"o5",reciprocalRequestId:"r3",score:86,reason:"Noor can help Samir with design while Samir brings data clarity."}];
+export const reviews: Review[] = [{ id:"rev1", authorId:"u2", recipientId:"u1", rating:5, body:"Generous, precise, and easy to learn with.", createdAt:"2026-08-01" }];
+export const notifications: Notification[] = [{ id:"n1", userId:"u1", type:"match", title:"Ezra may be a strong Python exchange", read:false, createdAt:"2026-08-18" }];
+export const toneFor=(categoryId:string):CategoryChipTone=>(categories.find(c=>c.id===categoryId)?.tone??"craft") as CategoryChipTone;
+export const getSkill=(id:string)=>skills.find(skill=>skill.id===id);
+export const getUser=(username:string)=>users.find(user=>user.username===username);
+export const getUserById=(id:string)=>users.find(user=>user.id===id);
+export const categoryName=(id:string)=>categories.find(c=>c.id===id)?.name??id;
+export const offerSkill=(offerId:string)=>getSkill(offers.find(o=>o.id===offerId)?.skillId??"");
+export const requestSkill=(requestId:string)=>getSkill(requests.find(r=>r.id===requestId)?.skillId??"");
+export const currentUser=()=>users.find(u=>u.id===currentUserId)!;
