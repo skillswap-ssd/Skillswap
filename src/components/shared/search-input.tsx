@@ -1,0 +1,1 @@
+import { Input } from "@/components/ui/input";export function SearchInput(){return <label className="grid gap-2 text-sm font-bold">Search skills<Input placeholder="Try Python, photography, speaking…" aria-label="Search skills"/></label>}

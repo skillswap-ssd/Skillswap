@@ -1,0 +1,1 @@
+import { cn } from "@/lib/utils";export function Card({className,...p}:React.HTMLAttributes<HTMLDivElement>){return <div className={cn("border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]",className)} {...p}/>}

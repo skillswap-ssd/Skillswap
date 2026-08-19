@@ -1,0 +1,1 @@
+export function Dialog({title,children}:{title:string;children:React.ReactNode}){return <section role="dialog" aria-label={title} className="border border-[var(--border)] bg-[var(--surface-elevated)] p-5"><h2 className="font-display text-2xl">{title}</h2>{children}</section>}

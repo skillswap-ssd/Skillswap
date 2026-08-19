@@ -1,0 +1,1 @@
+export function FilterButton({children}:{children:React.ReactNode}){return <button className="focus-ring border border-[var(--border)] px-3 py-2 text-sm font-bold hover:bg-[var(--surface-muted)]">{children}</button>}

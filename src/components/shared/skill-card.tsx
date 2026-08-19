@@ -1,0 +1,2 @@
+import type { Skill } from "@/data/models";import { Card } from "@/components/ui/card";import { CategoryChip } from "./category-chip";import { toneFor } from "@/data/mock/skillswap";
+export function SkillCard({skill}:{skill:Skill}){return <Card className="transition hover:-translate-y-1"><CategoryChip tone={toneFor(skill.categoryId)}>{skill.categoryId}</CategoryChip><h3 className="font-display mt-5 text-3xl">{skill.name}</h3><p className="lede text-base">{skill.description}</p></Card>}

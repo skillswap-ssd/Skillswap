@@ -1,0 +1,1 @@
+import { MainNav } from "@/components/navigation/main-nav";export function AppShell({children}:{children:React.ReactNode}){return <><MainNav/><main>{children}</main><footer className="container border-t border-[var(--border)] py-8 text-sm text-[var(--muted)]">SkillSwap Phase 0 foundation — built for exchange, trust, and future features.</footer></>}

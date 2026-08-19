@@ -1,0 +1,1 @@
+import { cn } from "@/lib/utils";export function Input(p:React.InputHTMLAttributes<HTMLInputElement>){return <input {...p} className={cn("focus-ring w-full border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3 text-sm",p.className)} />}
