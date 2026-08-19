@@ -1,0 +1,1 @@
+export function EmptyState({title,body}:{title:string;body:string}){return <div className="border border-dashed border-[var(--border)] p-8"><h2 className="font-display text-3xl">{title}</h2><p className="lede">{body}</p></div>}

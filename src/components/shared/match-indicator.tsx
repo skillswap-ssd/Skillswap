@@ -1,0 +1,1 @@
+export function MatchIndicator({score}:{score:number}){return <div className="grid gap-1"><span className="text-xs font-bold uppercase tracking-[.14em] text-[var(--muted)]">Match strength</span><meter min={0} max={100} value={score} className="w-full"/><b>{score}%</b></div>}

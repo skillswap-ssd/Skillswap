@@ -1,0 +1,12 @@
+export type ID = string;
+export type SkillCategory = { id: ID; name: string; tone: "craft"|"tech"|"voice"|"motion"|"business" };
+export type Skill = { id: ID; name: string; categoryId: ID; level?: "beginner"|"intermediate"|"advanced"|"expert"; description: string };
+export type User = { id: ID; username: string; name: string; avatar?: string; location: string; reputation: number };
+export type Profile = { userId: ID; headline: string; bio: string; offers: ID[]; requests: ID[]; interests: ID[] };
+export type SkillOffer = { id: ID; userId: ID; skillId: ID; format: "remote"|"in-person"|"hybrid"; summary: string };
+export type SkillRequest = { id: ID; userId: ID; skillId: ID; goal: string; urgency: "low"|"medium"|"high" };
+export type Match = { id: ID; offerId: ID; requestId: ID; score: number; reason: string };
+export type Conversation = { id: ID; participantIds: ID[]; lastMessageAt: string };
+export type Message = { id: ID; conversationId: ID; senderId: ID; body: string; createdAt: string };
+export type Review = { id: ID; authorId: ID; recipientId: ID; rating: number; body: string; createdAt: string };
+export type Notification = { id: ID; userId: ID; type: "match"|"message"|"review"|"system"; title: string; read: boolean; createdAt: string };

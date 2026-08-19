@@ -1,0 +1,1 @@
+export function Avatar({name}:{name:string}){return <span aria-label={name} className="inline-grid size-11 place-items-center border border-[var(--foreground)] bg-[var(--accent)] text-sm font-black">{name.split(' ').map(n=>n[0]).join('').slice(0,2)}</span>}

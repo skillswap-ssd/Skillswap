@@ -1,0 +1,1 @@
+export function Tabs({tabs}:{tabs:string[]}){return <div role="tablist" className="flex gap-2 border-b border-[var(--border)]">{tabs.map((t,i)=><button role="tab" aria-selected={i===0} className="focus-ring px-3 py-2 font-bold aria-selected:border-b-2 aria-selected:border-[var(--primary)]" key={t}>{t}</button>)}</div>}
