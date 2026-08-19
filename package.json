@@ -18,12 +18,13 @@
     "tailwind-merge": "latest"
   },
   "devDependencies": {
-    "typescript": "latest",
+    "@opennextjs/cloudflare": "^1.20.2",
+    "@types/react": "file:types/react",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "tailwindcss": "latest",
-    "wrangler": "latest",
-    "@opennextjs/cloudflare": "^1.20.2"
+    "typescript": "latest",
+    "wrangler": "latest"
   },
   "engines": {
     "node": ">=22.0.0"

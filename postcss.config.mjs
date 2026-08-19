@@ -1,1 +1,5 @@
-export default { plugins: { tailwindcss: {} } };
+const config = {
+  plugins: {},
+};
+
+export default config;

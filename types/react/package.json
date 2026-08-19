@@ -1,0 +1,10 @@
+{
+  "name": "@types/react",
+  "version": "19.0.0-skillwap.0",
+  "types": "index.d.ts",
+  "private": true,
+  "files": [
+    "index.d.ts",
+    "jsx-runtime.d.ts"
+  ]
+}
