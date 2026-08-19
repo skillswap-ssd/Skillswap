@@ -27,7 +27,14 @@ Do not force an output directory; Vercel owns the production adapter.
 
 ## Cloudflare Workers with OpenNext
 
-SkillSwap is prepared for the current OpenNext Cloudflare Workers model rather than static-only Pages. The scripts are:
+SkillSwap is prepared for the current OpenNext Cloudflare Workers model rather than static-only Pages.
+
+### Cloudflare Workers Builds Settings
+
+- **Build command:** `npm run build` (`next build`)
+- **Deploy command:** `npm run deploy` (`opennextjs-cloudflare build && opennextjs-cloudflare deploy`)
+
+The scripts are:
 
 ```bash
 npm run preview
@@ -37,7 +44,10 @@ npm run upload
 
 `preview` builds the OpenNext output and runs it in the Workers runtime. `deploy` builds and deploys to Workers. `upload` is provided for non-production Workers Builds that upload a version.
 
-Copy `wrangler.example.toml` to `wrangler.toml` for a real Cloudflare project, then set the Worker name, compatibility date, `nodejs_compat`, assets binding, and any bindings you add later.
+Configuration is maintained in `wrangler.json` (or `wrangler.jsonc`), which specifies:
+- `main`: `.open-next/worker.js`
+- `assets`: `{ "directory": ".open-next/assets", "binding": "ASSETS" }`
+- `compatibility_flags`: `["nodejs_compat"]`
 
 Required environment variables currently documented in `.env.example`:
 

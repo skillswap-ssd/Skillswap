@@ -1,2 +1,10 @@
 import nextVitals from "eslint-config-next/core-web-vitals";
-export default [...nextVitals];
+
+const eslintConfig = [
+  {
+    ignores: [".next/**", ".open-next/**", ".vercel/**"],
+  },
+  ...nextVitals,
+];
+
+export default eslintConfig;
