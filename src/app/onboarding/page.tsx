@@ -2,14 +2,13 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { RecommendationReason } from "@/components/shared/recommendation-reason";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ExchangeFormat, SkillLevel } from "@/data/models";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
 import { getRelatedSkillsForSkill } from "@/lib/skillRelations";
-import { CheckCircle2, Plus, Sparkles, Trash2, ArrowRight } from "lucide-react";
+import { CheckCircle2, Plus, Sparkles, Trash2, ArrowRight, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -86,7 +85,7 @@ export default function OnboardingPage() {
     setCompleted(true);
     setTimeout(() => {
       router.push("/discover");
-    }, 1000);
+    }, 1200);
   };
 
   return (
@@ -98,7 +97,7 @@ export default function OnboardingPage() {
       />
 
       {completed && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center gap-2">
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center gap-2 rounded-lg">
           <CheckCircle2 size={20} className="text-emerald-600" />
           Onboarding complete! Redirecting to discovery...
         </div>
@@ -327,27 +326,30 @@ export default function OnboardingPage() {
           </div>
         </Card>
 
-        {/* Next Step Path Recommendation Card */}
-        <Card className="border-2 border-[var(--foreground)] bg-[#f7f5f0]">
+        {/* Lightweight Practice Recommendation Prompt */}
+        <Card className="border-2 border-[#1c2430] bg-[#f7f5f0] p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <span className="rounded bg-[#1c2430] px-2 py-0.5 text-xs font-semibold text-white">
-                RECOMMENDED NEXT STEP
+              <span className="rounded bg-[#1c2430] px-2.5 py-0.5 text-xs font-semibold text-white uppercase tracking-wider">
+                PRACTICE BEFORE YOU SWAP
               </span>
               <h3 className="font-serif text-xl font-bold mt-2 text-[#1c2430]">
-                Choose how you want to start
+                Want to practice before your first SkillSwap?
               </h3>
               <p className="text-xs text-[#64748b] mt-1">
-                You can match directly with real community members or practice first with a simulated partner.
+                Rehearse explanations or practice interviewing with a simulated practice partner tailored to your learning goal (<strong>{primaryWantedName}</strong>).
               </p>
             </div>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <Link
                 href="/practice"
-                className="rounded-lg border border-[#e2ded8] bg-white px-3.5 py-2 text-xs font-bold text-[#1c2430] hover:bg-[#f0ece1]"
+                className="rounded-lg bg-[#1c2430] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2d3748] transition flex items-center gap-1"
               >
-                Practice First →
+                Practice Now <ArrowRight size={14} />
               </Link>
+              <Button type="submit" variant="secondary" className="text-xs">
+                Find Real People
+              </Button>
             </div>
           </div>
         </Card>

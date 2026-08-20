@@ -41,7 +41,7 @@ export default function PracticeCenterPage() {
               Practice before you SkillSwap
             </h1>
             <p className="mt-2 max-w-2xl text-base text-[#64748b]">
-              Sharpen your skills, rehearse technical interviews, or practice teaching with AI-simulated partners — then take your confidence directly into the community.
+              Sharpen your skills, rehearse technical interviews, or practice teaching with simulated practice partners — then take your confidence directly into the community.
             </p>
           </div>
           <div className="flex items-center gap-3">

@@ -230,7 +230,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
               </div>
               <h3 className="font-serif text-2xl font-bold">Your Practice Log</h3>
               <p className="text-xs text-[#64748b] mt-1">
-                Separated from community reputation. Tracks local simulation sessions with AI practice partners.
+                Separated from community reputation. Tracks local simulation sessions with simulated practice partners.
               </p>
             </div>
             <Link
