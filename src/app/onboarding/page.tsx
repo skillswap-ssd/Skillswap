@@ -2,18 +2,21 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
+import { RecommendationReason } from "@/components/shared/recommendation-reason";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ExchangeFormat, SkillLevel } from "@/data/models";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
-import { CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { getRelatedSkillsForSkill } from "@/lib/skillRelations";
+import { CheckCircle2, Plus, Sparkles, Trash2, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { currentUser, profiles, categories, finishOnboarding } = useSkillSwap();
+  const { currentUser, profiles, categories, users, finishOnboarding } = useSkillSwap();
 
   const userProfile = profiles.find((p) => p.userId === currentUser.id);
 
@@ -37,6 +40,12 @@ export default function OnboardingPage() {
   ]);
 
   const [completed, setCompleted] = useState(false);
+
+  const primaryWantedName = wantedSkills[0]?.name || "Photography";
+  const relatedWantedSkills = getRelatedSkillsForSkill(primaryWantedName);
+
+  // Suggested people who teach wanted skills
+  const suggestedPeers = users.filter((u) => u.id !== currentUser.id).slice(0, 2);
 
   const handleAddTeachable = () => {
     setTeachableSkills([
@@ -83,9 +92,9 @@ export default function OnboardingPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Onboarding"
+        eyebrow="Smart Onboarding"
         title="Build your SkillSwap identity."
-        body="Set up your exchange profile with what you can teach and what you want to learn."
+        body="Set up your exchange profile with what you can teach and what you want to learn, and see immediate personalized recommendations."
       />
 
       {completed && (
@@ -317,6 +326,44 @@ export default function OnboardingPage() {
             ))}
           </div>
         </Card>
+
+        {/* Smart Onboarding Preview Section */}
+        {primaryWantedName && (
+          <Card className="border-2 border-[var(--primary)] bg-[var(--surface)]">
+            <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-[var(--primary)]">
+              <Sparkles size={14} /> Based on what you want to learn ({primaryWantedName})...
+            </div>
+
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] block mb-1.5">
+                  Suggested Related Skills:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {relatedWantedSkills.map((rel) => (
+                    <span key={rel.id} className="text-xs font-bold bg-[var(--surface-muted)] px-2.5 py-1 border border-[var(--border)]">
+                      + {rel.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] block mb-1.5">
+                  Possible SkillSwap Peers:
+                </span>
+                <div className="space-y-1.5">
+                  {suggestedPeers.map((p) => (
+                    <div key={p.id} className="text-xs font-bold p-2 border border-[var(--border)] bg-[var(--surface-muted)] flex justify-between items-center">
+                      <span>{p.name} ({p.location})</span>
+                      <span className="text-[var(--primary)]">{p.reputation}★</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-3">
           <Button type="submit">Complete Onboarding</Button>

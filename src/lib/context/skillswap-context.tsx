@@ -50,6 +50,13 @@ interface SkillSwapContextType {
   reviews: Review[];
   activities: Activity[];
 
+  recentlyViewedSkills: string[];
+  recentlyViewedProfiles: string[];
+
+  trackViewedSkill: (skillId: string) => void;
+  trackViewedProfile: (userId: string) => void;
+  addRecommendationNotification: (data: { title: string; body?: string; link?: string }) => void;
+
   updateProfile: (data: {
     name?: string;
     username?: string;
@@ -232,6 +239,34 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>(() => loadSavedState()?.notifications || initialNotifications);
   const [reviews, setReviews] = useState<Review[]>(() => loadSavedState()?.reviews || initialReviews);
   const [activities, setActivities] = useState<Activity[]>(() => loadSavedState()?.activities || defaultActivities);
+
+  const [recentlyViewedSkills, setRecentlyViewedSkills] = useState<string[]>([]);
+  const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<string[]>([]);
+
+  const trackViewedSkill = (skillId: string) => {
+    if (!skillId) return;
+    setRecentlyViewedSkills((prev) => Array.from(new Set([skillId, ...prev])).slice(0, 5));
+  };
+
+  const trackViewedProfile = (userId: string) => {
+    if (!userId || userId === currentUserId) return;
+    setRecentlyViewedProfiles((prev) => Array.from(new Set([userId, ...prev])).slice(0, 5));
+  };
+
+  const addRecommendationNotification = (data: { title: string; body?: string; link?: string }) => {
+    const now = new Date().toISOString().split("T")[0];
+    const newNotif: Notification = {
+      id: `n_rec_${Date.now()}`,
+      userId: currentUserId,
+      type: "match",
+      title: data.title,
+      body: data.body,
+      link: data.link || "/discover",
+      read: false,
+      createdAt: now,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
 
   // Save to localStorage when state changes (skip first mount to preserve initial values)
   useEffect(() => {
@@ -813,6 +848,11 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
         notifications,
         reviews,
         activities,
+        recentlyViewedSkills,
+        recentlyViewedProfiles,
+        trackViewedSkill,
+        trackViewedProfile,
+        addRecommendationNotification,
         updateProfile,
         addOrUpdateSkill,
         finishOnboarding,
