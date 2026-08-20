@@ -1,8 +1,8 @@
 "use client";
 
+import { InkLandscape } from "@/components/home/ink-landscape";
 import { RecommendationReason } from "@/components/shared/recommendation-reason";
 import { UserCard } from "@/components/shared/user-card";
-import { SkillCard } from "@/components/shared/skill-card";
 import { PersonalLearningSnapshot } from "@/components/shared/personal-learning-snapshot";
 import { WeeklyInsightCard } from "@/components/shared/weekly-insight-card";
 import { ProfileStrength } from "@/components/shared/profile-strength";
@@ -71,20 +71,20 @@ export default function Home() {
   const topRecommended = recommendedUsers[0];
 
   return (
-    <div className="page space-y-12">
-      {/* Editorial Header */}
-      <section className="container editorial">
+    <div className="page space-y-16">
+      {/* Editorial Hero Section */}
+      <section className="container editorial py-4">
         <div>
-          <p className="text-sm font-black uppercase tracking-[.2em] text-[var(--primary)]">
+          <p className="text-xs font-extrabold uppercase tracking-[.25em] text-[var(--primary)]">
             Personal Discovery Hub
           </p>
-          <h1 className="font-display text-6xl leading-[.9] md:text-8xl mt-1">
+          <h1 className="font-display text-5xl leading-[.95] md:text-7xl mt-3 text-[var(--foreground)] tracking-tight">
             Welcome back, {currentUser.name.split(" ")[0]}.
           </h1>
-          <p className="lede max-w-2xl mt-3">
+          <p className="lede max-w-xl mt-4">
             SkillSwap understands your skills, learning goals, and schedule to surface people and opportunities most useful to you.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3.5">
             <Button href="/discover">Find a swap</Button>
             <Button variant="secondary" href="/skills/new">
               Add a skill
@@ -92,48 +92,58 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Right Editorial Scene */}
+        <div className="w-full">
+          <InkLandscape />
+        </div>
+      </section>
+
+      {/* Top Match Recommendation Banner (Relocated below Hero) */}
+      <section className="container">
         {topRecommended ? (
-          <Card className="rotate-[-1deg] border-2 border-[var(--primary)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-[var(--primary)] uppercase tracking-wider">
-                <Sparkles size={14} /> Top Recommended Match
+          <Card className="border-l-4 border-l-[var(--primary)] bg-[var(--surface-elevated)] p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex items-center gap-2 font-bold text-xs text-[var(--primary)] uppercase tracking-wider">
+                  <Sparkles size={14} /> Top Recommended Match
+                  <span className="text-xs font-bold text-[var(--muted)] ml-2">· {topRecommended.quality}</span>
+                </div>
+                <h3 className="font-display text-3xl text-[var(--foreground)]">
+                  {topRecommended.user.name} <span className="text-sm font-normal text-[var(--muted)]">({topRecommended.user.reputation}★)</span>
+                </h3>
+                <p className="text-sm font-medium text-[var(--secondary)]">{topRecommended.profile.headline}</p>
+
+                <div className="pt-2">
+                  <RecommendationReason
+                    reason={topRecommended.primaryReason}
+                    category={topRecommended.reasons[0]?.category}
+                  />
+                </div>
               </div>
-              <span className="text-xs font-bold text-[var(--muted)]">{topRecommended.quality}</span>
-            </div>
 
-            <h3 className="font-display text-2xl mt-2">{topRecommended.user.name}</h3>
-            <p className="text-xs font-medium text-[var(--muted)]">{topRecommended.profile.headline}</p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 border-t md:border-t-0 md:border-l border-[var(--border)] pt-4 md:pt-0 md:pl-6">
+                <div className="flex items-center gap-3 text-xs bg-[var(--surface-muted)] p-3 rounded-lg border border-[var(--border)]">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Offer</span>
+                    <b className="truncate block max-w-[100px] text-[var(--foreground)]">{topRecommended.offeredSkillNames[0] || "Skills"}</b>
+                  </div>
+                  <ArrowLeftRight className="text-[var(--primary)] shrink-0" size={16} />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Want</span>
+                    <b className="truncate block max-w-[100px] text-[var(--foreground)]">{topRecommended.wantedSkillNames[0] || "Skills"}</b>
+                  </div>
+                </div>
 
-            <div className="my-3">
-              <RecommendationReason
-                reason={topRecommended.primaryReason}
-                category={topRecommended.reasons[0]?.category}
-              />
-            </div>
-
-            <div className="my-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs">
-              <div className="p-2 border border-[var(--border)] bg-[var(--surface-muted)] text-center">
-                <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Offer</span>
-                <b className="truncate block">{topRecommended.offeredSkillNames[0] || "Skills"}</b>
+                <Button href={`/profile/${topRecommended.user.username}`} className="text-xs">
+                  View Profile →
+                </Button>
               </div>
-              <ArrowLeftRight className="text-[var(--primary)] mx-auto shrink-0" size={18} />
-              <div className="p-2 border border-[var(--border)] bg-[var(--surface-muted)] text-center">
-                <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Want</span>
-                <b className="truncate block">{topRecommended.wantedSkillNames[0] || "Skills"}</b>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-[var(--border)] flex justify-between items-center text-xs">
-              <span className="font-bold text-[var(--muted)]">Rating {topRecommended.user.reputation}★</span>
-              <Link href={`/profile/${topRecommended.user.username}`} className="font-bold text-[var(--primary)] hover:underline">
-                View Profile & Proposal →
-              </Link>
             </div>
           </Card>
         ) : (
-          <Card className="rotate-[-1deg]">
+          <Card>
             <p className="font-bold text-[var(--primary)]">Add skills to unlock recommendations</p>
-            <p className="text-sm mt-2">Specify what you teach and want to learn to get personalized peer matches.</p>
+            <p className="text-sm mt-1 text-[var(--secondary)]">Specify what you teach and want to learn to get personalized peer matches.</p>
             <Button className="mt-4 text-xs" href="/skills/new">
               Add Skills
             </Button>
@@ -160,10 +170,10 @@ export default function Home() {
       <section className="container">
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
           <div>
-            <h2 className="font-display text-4xl">Recommended for you</h2>
-            <p className="text-sm text-[var(--muted)] mt-0.5">Peers with complementary skills, schedules, and learning goals.</p>
+            <h2 className="font-display text-3xl text-[var(--foreground)]">Recommended for you</h2>
+            <p className="text-xs text-[var(--muted)] mt-1">Peers with complementary skills, schedules, and learning goals.</p>
           </div>
-          <Link href="/matches" className="font-bold text-sm text-[var(--primary)] hover:underline">
+          <Link href="/matches" className="font-bold text-xs text-[var(--primary)] hover:underline">
             View All Matches →
           </Link>
         </div>
@@ -173,14 +183,14 @@ export default function Home() {
             <Card key={rec.user.id} className="flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start">
-                  <h3 className="font-display text-xl">
+                  <h3 className="font-display text-xl text-[var(--foreground)]">
                     <Link href={`/profile/${rec.user.username}`} className="hover:underline">
                       {rec.user.name}
                     </Link>
                   </h3>
                   <span className="text-xs font-bold text-[var(--muted)]">{rec.user.reputation}★</span>
                 </div>
-                <p className="text-xs text-[var(--muted)] mt-1">{rec.profile.headline}</p>
+                <p className="text-xs text-[var(--secondary)] mt-1">{rec.profile.headline}</p>
 
                 <div className="my-3">
                   <RecommendationReason
@@ -189,9 +199,9 @@ export default function Home() {
                   />
                 </div>
 
-                <div className="text-xs space-y-1 text-[var(--muted)]">
-                  <p><b>Teaches:</b> {rec.offeredSkillNames.join(", ") || "Various"}</p>
-                  <p><b>Wants:</b> {rec.wantedSkillNames.join(", ") || "Various"}</p>
+                <div className="text-xs space-y-1 text-[var(--secondary)]">
+                  <p><b className="text-[var(--foreground)]">Teaches:</b> {rec.offeredSkillNames.join(", ") || "Various"}</p>
+                  <p><b className="text-[var(--foreground)]">Wants:</b> {rec.wantedSkillNames.join(", ") || "Various"}</p>
                 </div>
               </div>
 
@@ -213,7 +223,7 @@ export default function Home() {
       <section className="container grid gap-8 lg:grid-cols-2">
         <div>
           <div className="border-b border-[var(--border)] pb-2 mb-4">
-            <h2 className="font-display text-3xl">Because you want to learn...</h2>
+            <h2 className="font-display text-2xl text-[var(--foreground)]">Because you want to learn...</h2>
             <p className="text-xs text-[var(--muted)]">Peers offering skills on your learning shelf.</p>
           </div>
           <div className="grid gap-3">
@@ -234,7 +244,7 @@ export default function Home() {
 
         <div>
           <div className="border-b border-[var(--border)] pb-2 mb-4">
-            <h2 className="font-display text-3xl">You could teach...</h2>
+            <h2 className="font-display text-2xl text-[var(--foreground)]">You could teach...</h2>
             <p className="text-xs text-[var(--muted)]">Peers actively looking for skills you offer.</p>
           </div>
           <div className="grid gap-3">
@@ -258,10 +268,10 @@ export default function Home() {
       <section className="container">
         <div className="border-b border-[var(--border)] pb-3 flex justify-between items-center">
           <div>
-            <h2 className="font-display text-4xl">Continue your SkillSwap journey</h2>
-            <p className="text-sm text-[var(--muted)] mt-0.5">Pending requests, active exchanges, and useful next actions.</p>
+            <h2 className="font-display text-3xl text-[var(--foreground)]">Continue your SkillSwap journey</h2>
+            <p className="text-xs text-[var(--muted)] mt-1">Pending requests, active exchanges, and useful next actions.</p>
           </div>
-          <Link href="/connections" className="font-bold text-sm text-[var(--primary)] hover:underline">
+          <Link href="/connections" className="font-bold text-xs text-[var(--primary)] hover:underline">
             Manage Connections →
           </Link>
         </div>
@@ -278,12 +288,12 @@ export default function Home() {
                 <Card key={sr.id} className="flex justify-between items-center">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--primary)] bg-[var(--surface-muted)] px-2 py-0.5 border border-[var(--border)]">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--primary)] bg-[var(--surface-muted)] px-2 py-0.5 border border-[var(--border)] rounded">
                         Status: {sr.status}
                       </span>
                       <span className="text-xs text-[var(--muted)]">{sr.preferredFormat}</span>
                     </div>
-                    <h3 className="font-display text-xl mt-2">{otherUser?.name || "Peer"}</h3>
+                    <h3 className="font-display text-xl mt-2 text-[var(--foreground)]">{otherUser?.name || "Peer"}</h3>
                     <p className="text-xs text-[var(--muted)] mt-1">
                       Exchange: {offerSkill?.name || "Skill"} ⇄ {requestSkill?.name || "Skill"}
                     </p>
@@ -298,8 +308,8 @@ export default function Home() {
           ) : (
             <Card className="flex items-center justify-between">
               <div>
-                <b className="block text-sm">No active exchanges right now</b>
-                <p className="text-xs text-[var(--muted)]">Propose a exchange or connect with recommended peers to get started.</p>
+                <b className="block text-sm text-[var(--foreground)]">No active exchanges right now</b>
+                <p className="text-xs text-[var(--muted)]">Propose an exchange or connect with recommended peers to get started.</p>
               </div>
               <Button href="/discover" className="text-xs">
                 Explore Discover →
@@ -315,8 +325,8 @@ export default function Home() {
       {/* Explore something new */}
       <section className="container">
         <div className="border-b border-[var(--border)] pb-3">
-          <h2 className="font-display text-4xl">Explore something new</h2>
-          <p className="text-sm text-[var(--muted)] mt-0.5">Relevant skills and opportunities outside your current shelf.</p>
+          <h2 className="font-display text-3xl text-[var(--foreground)]">Explore something new</h2>
+          <p className="text-xs text-[var(--muted)] mt-1">Relevant skills and opportunities outside your current shelf.</p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -324,8 +334,8 @@ export default function Home() {
             <Card key={skill.id} className="flex flex-col justify-between">
               <div>
                 <RecommendationReason reason={reason} category="explored" />
-                <h3 className="font-display text-2xl mt-3">{skill.name}</h3>
-                <p className="text-xs text-[var(--muted)] mt-1">{skill.description}</p>
+                <h3 className="font-display text-2xl mt-3 text-[var(--foreground)]">{skill.name}</h3>
+                <p className="text-xs text-[var(--secondary)] mt-1">{skill.description}</p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[var(--border)] flex justify-between items-center text-xs">
@@ -344,7 +354,7 @@ export default function Home() {
 
       {/* Community Activity */}
       <section className="container pb-12">
-        <h2 className="font-display text-4xl">Recent Activity</h2>
+        <h2 className="font-display text-3xl text-[var(--foreground)]">Recent Activity</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           {activities.length > 0 ? (
             activities.slice(0, 3).map((act) => (

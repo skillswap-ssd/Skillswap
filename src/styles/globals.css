@@ -1,43 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #fcfbf9;
-  --foreground: #1c2430;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-muted: #f7f5f0;
-  --border: #e2ded8;
-  --primary: #1c2430;
-  --primary-foreground: #ffffff;
-  --secondary: #475569;
-  --accent: #2563eb;
-  --muted: #64748b;
-  --success: #059669;
-  --warning: #d97706;
-  --destructive: #dc2626;
+  --background: #F7F2E9;
+  --surface: #FBF8F1;
+  --surface-elevated: #FBF8F1;
+  --surface-muted: #F1EBE0;
+  --foreground: #171717;
+  --secondary: #4A4A46;
+  --muted: #77736B;
+  --primary: #A52A20;
+  --primary-dark: #7E211A;
+  --primary-foreground: #FFF9F0;
+  --accent: #A52A20;
+  --border: #D8D0C3;
+  --success: #2D6A4F;
+  --warning: #B86B12;
+  --destructive: #A52A20;
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 18px;
-  --shadow: 0 10px 30px rgba(28, 36, 48, 0.05);
+  --radius-lg: 16px;
+  --shadow: 0 4px 20px rgba(23, 23, 23, 0.03);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #121820;
-    --foreground: #f1f5f9;
-    --surface: #1c2430;
-    --surface-elevated: #242f3e;
-    --surface-muted: #283344;
-    --border: #334155;
-    --primary: #38bdf8;
-    --primary-foreground: #0f172a;
-    --secondary: #94a3b8;
-    --accent: #60a5fa;
-    --muted: #94a3b8;
-    --success: #34d399;
-    --warning: #fbbf24;
-    --destructive: #f87171;
+    --background: #181715;
+    --surface: #201E1B;
+    --surface-elevated: #262420;
+    --surface-muted: #2C2925;
+    --foreground: #EDE8DF;
+    --secondary: #B5AFA6;
+    --muted: #9E978C;
+    --primary: #C84B41;
+    --primary-dark: #A52A20;
+    --primary-foreground: #FFF9F0;
+    --accent: #C84B41;
+    --border: #3A3630;
+    --success: #52A27A;
+    --warning: #E59836;
+    --destructive: #E05347;
   }
 }
 
@@ -84,9 +86,9 @@ textarea {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.035;
-  background-image: radial-gradient(#1c2430 1px, transparent 1px);
-  background-size: 12px 12px;
+  opacity: 0.025;
+  background-image: radial-gradient(#171717 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
 .page {
@@ -106,14 +108,15 @@ textarea {
 }
 
 .lede {
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.65;
-  color: var(--muted);
+  color: var(--secondary);
 }
 
 @media (max-width: 820px) {
   .editorial {
     grid-template-columns: 1fr;
+    gap: 32px;
   }
   .container {
     width: min(100% - 24px, 1160px);
