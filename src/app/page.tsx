@@ -73,47 +73,56 @@ export default function Home() {
   return (
     <div className="page space-y-16">
       {/* Editorial Hero Section */}
-      <section className="container editorial py-4">
-        <div>
-          <p className="text-xs font-extrabold uppercase tracking-[.25em] text-[var(--primary)]">
-            Personal Discovery Hub
-          </p>
-          <h1 className="font-display text-5xl leading-[.95] md:text-7xl mt-3 text-[var(--foreground)] tracking-tight">
-            Welcome back, {currentUser.name.split(" ")[0]}.
-          </h1>
-          <p className="lede max-w-xl mt-4">
-            SkillSwap understands your skills, learning goals, and schedule to surface people and opportunities most useful to you.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3.5">
-            <Button href="/discover">Find a swap</Button>
-            <Button variant="secondary" href="/skills/new">
-              Add a skill
-            </Button>
-          </div>
-        </div>
+      <section className="container pt-4 pb-8 md:py-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center">
+          {/* Left Text Column */}
+          <div className="md:col-span-6 lg:col-span-5 space-y-5 text-left z-10">
+            <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-[var(--primary)]">
+              PERSONAL DISCOVERY HUB
+            </p>
 
-        {/* Right Editorial Scene */}
-        <div className="w-full">
-          <InkLandscape />
+            <h1 className="font-display text-5xl leading-[0.92] sm:text-6xl md:text-7xl text-[var(--foreground)] tracking-tight">
+              Welcome back,<br />
+              <span className="text-[var(--primary)]">{currentUser.name.split(" ")[0]}.</span>
+            </h1>
+
+            <p className="lede max-w-md text-base sm:text-lg text-[var(--secondary)] leading-relaxed">
+              SkillSwap understands your skills, learning goals, and schedule to surface people and opportunities most useful to you.
+            </p>
+
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <Button href="/discover" className="min-w-[140px]">
+                Find a swap
+              </Button>
+              <Button variant="secondary" href="/skills/new" className="min-w-[140px]">
+                Add a skill
+              </Button>
+            </div>
+          </div>
+
+          {/* Right Editorial Scene (Integrates directly without card container) */}
+          <div className="md:col-span-6 lg:col-span-7 w-full flex justify-center items-center">
+            <InkLandscape />
+          </div>
         </div>
       </section>
 
-      {/* Top Match Recommendation Banner (Relocated below Hero) */}
+      {/* Top Match Recommendation Banner */}
       <section className="container">
         {topRecommended ? (
-          <Card className="border-l-4 border-l-[var(--primary)] bg-[var(--surface-elevated)] p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2 max-w-2xl">
-                <div className="flex items-center gap-2 font-bold text-xs text-[var(--primary)] uppercase tracking-wider">
-                  <Sparkles size={14} /> Top Recommended Match
-                  <span className="text-xs font-bold text-[var(--muted)] ml-2">· {topRecommended.quality}</span>
+          <Card className="border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[var(--primary)] uppercase tracking-wider">
+                  <Sparkles size={14} /> TOP RECOMMENDED MATCH
+                  <span className="text-xs font-semibold text-[var(--muted)] normal-case tracking-normal">· {topRecommended.quality}</span>
                 </div>
-                <h3 className="font-display text-3xl text-[var(--foreground)]">
-                  {topRecommended.user.name} <span className="text-sm font-normal text-[var(--muted)]">({topRecommended.user.reputation}★)</span>
+                <h3 className="font-display text-3xl sm:text-4xl text-[var(--foreground)] tracking-tight">
+                  {topRecommended.user.name} <span className="text-base font-sans font-normal text-[var(--muted)]">({topRecommended.user.reputation}★)</span>
                 </h3>
-                <p className="text-sm font-medium text-[var(--secondary)]">{topRecommended.profile.headline}</p>
+                <p className="text-sm text-[var(--secondary)] leading-relaxed">{topRecommended.profile.headline}</p>
 
-                <div className="pt-2">
+                <div className="pt-1">
                   <RecommendationReason
                     reason={topRecommended.primaryReason}
                     category={topRecommended.reasons[0]?.category}
@@ -121,27 +130,33 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 border-t md:border-t-0 md:border-l border-[var(--border)] pt-4 md:pt-0 md:pl-6">
-                <div className="flex items-center gap-3 text-xs bg-[var(--surface-muted)] p-3 rounded-lg border border-[var(--border)]">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Offer</span>
-                    <b className="truncate block max-w-[100px] text-[var(--foreground)]">{topRecommended.offeredSkillNames[0] || "Skills"}</b>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--border)] pt-5 lg:pt-0 lg:pl-8">
+                {/* Reciprocal Skills Exchange Module */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 text-xs bg-[var(--surface-muted)]/80 p-3.5 rounded-xl border border-[var(--border)] min-w-[240px]">
+                  <div className="text-center sm:text-left w-full sm:w-auto">
+                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider block">THEY OFFER</span>
+                    <b className="truncate block max-w-[130px] text-sm text-[var(--foreground)]">{topRecommended.offeredSkillNames[0] || "Skills"}</b>
                   </div>
-                  <ArrowLeftRight className="text-[var(--primary)] shrink-0" size={16} />
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] block">They Want</span>
-                    <b className="truncate block max-w-[100px] text-[var(--foreground)]">{topRecommended.wantedSkillNames[0] || "Skills"}</b>
+
+                  <div className="py-1 sm:py-0 text-[var(--primary)] shrink-0 font-bold">
+                    <ArrowLeftRight size={18} className="hidden sm:block" />
+                    <span className="sm:hidden text-xs">↕</span>
+                  </div>
+
+                  <div className="text-center sm:text-left w-full sm:w-auto">
+                    <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider block">THEY WANT</span>
+                    <b className="truncate block max-w-[130px] text-sm text-[var(--foreground)]">{topRecommended.wantedSkillNames[0] || "Skills"}</b>
                   </div>
                 </div>
 
-                <Button href={`/profile/${topRecommended.user.username}`} className="text-xs">
+                <Button href={`/profile/${topRecommended.user.username}`} className="text-xs px-6 py-3 shrink-0">
                   View Profile →
                 </Button>
               </div>
             </div>
           </Card>
         ) : (
-          <Card>
+          <Card className="p-6 border border-[var(--border)] bg-[var(--surface)]">
             <p className="font-bold text-[var(--primary)]">Add skills to unlock recommendations</p>
             <p className="text-sm mt-1 text-[var(--secondary)]">Specify what you teach and want to learn to get personalized peer matches.</p>
             <Button className="mt-4 text-xs" href="/skills/new">
