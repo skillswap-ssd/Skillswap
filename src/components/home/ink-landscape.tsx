@@ -8,8 +8,8 @@ export function InkLandscape() {
       <Image
         src="/hero-landscape.png"
         alt="Japanese ink landscape with sun, mountains, tree and figure"
-        width={1024}
-        height={1536}
+        width={1177}
+        height={1337}
         className="w-full h-auto object-cover rounded-2xl"
         priority
       />
