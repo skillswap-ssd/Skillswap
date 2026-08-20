@@ -15,6 +15,8 @@ import {
   CheckCircle,
   MessageSquare,
   Star,
+  UserCheck,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -27,6 +29,7 @@ export default function ConnectionsPage() {
     connections,
     swapRequests,
     updateSwapStatus,
+    updateConnectionStatus,
     getOrCreateConversation,
     addReview,
     reviews,
@@ -301,23 +304,63 @@ export default function ConnectionsPage() {
             />
           ) : (
             myConnections.map((conn) => {
-              const otherUserId =
-                conn.requesterId === currentUserId ? conn.recipientId : conn.requesterId;
+              const isRequester = conn.requesterId === currentUserId;
+              const otherUserId = isRequester ? conn.recipientId : conn.requesterId;
               const otherUser = users.find((u) => u.id === otherUserId);
 
               return (
-                <Card key={conn.id} className="flex items-center justify-between">
+                <Card key={conn.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     {otherUser && <Avatar name={otherUser.name} />}
                     <div>
                       <h3 className="font-bold text-lg">{otherUser?.name}</h3>
                       <p className="text-xs text-[var(--muted)]">
-                        @{otherUser?.username} · Status: {conn.status} · Connected {conn.createdAt}
+                        @{otherUser?.username} · {otherUser?.location}
                       </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        {conn.status === "connected" ? (
+                          <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                            <UserCheck size={14} /> Connected
+                          </span>
+                        ) : (
+                          <Badge>
+                            {isRequester ? "Pending Acceptance" : "Connection Request Received"}
+                          </Badge>
+                        )}
+                        <span className="text-[10px] text-[var(--muted)]">• Connected {conn.createdAt}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {conn.status === "pending" && !isRequester && (
+                      <>
+                        <Button
+                          onClick={() => updateConnectionStatus(conn.id, "connected")}
+                          className="text-xs"
+                        >
+                          <Check size={14} className="mr-1 inline" /> Accept
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => updateConnectionStatus(conn.id, "declined")}
+                          className="text-xs text-rose-700"
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    )}
+
+                    {conn.status === "pending" && isRequester && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => updateConnectionStatus(conn.id, "cancelled")}
+                        className="text-xs"
+                      >
+                        <X size={14} className="mr-1 inline" /> Cancel Request
+                      </Button>
+                    )}
+
                     {otherUser && (
                       <Link
                         href="/messages"
@@ -327,7 +370,8 @@ export default function ConnectionsPage() {
                         Message
                       </Link>
                     )}
-                    <Button variant="ghost" href={`/profile/${otherUser?.username}`}>
+
+                    <Button variant="ghost" href={`/profile/${otherUser?.username}`} className="text-xs">
                       View Profile
                     </Button>
                   </div>
