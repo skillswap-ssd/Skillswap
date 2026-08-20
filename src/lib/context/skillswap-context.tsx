@@ -15,6 +15,7 @@ import {
 import type {
   Activity,
   Connection,
+  ConnectionStatus,
   Conversation,
   ExchangeFormat,
   ID,
@@ -86,6 +87,7 @@ interface SkillSwapContextType {
   }) => void;
 
   sendConnectionRequest: (recipientId: ID) => void;
+  updateConnectionStatus: (connectionId: ID, status: ConnectionStatus | "declined" | "cancelled") => void;
   createSwapRequest: (data: {
     recipientId: ID;
     offeredSkillId: ID;
@@ -399,6 +401,21 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
+    if (!data.id) {
+      setActivities((prev) => [
+        {
+          id: `act_${Date.now()}`,
+          type: "skill_added",
+          userId: currentUserId,
+          skillId: targetSkillId,
+          title: "New Skill Added",
+          description: `${currentUser.name} added ${data.name} (${data.kind === "want" ? "learning goal" : "offer"}).`,
+          createdAt: new Date().toISOString().split("T")[0],
+        },
+        ...prev,
+      ]);
+    }
+
     const resultSkill = skills.find((s) => s.id === targetSkillId) || {
       id: targetSkillId!,
       name: data.name,
@@ -451,34 +468,63 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendConnectionRequest = (recipientId: ID) => {
-    if (
-      connections.some(
-        (c) =>
-          (c.requesterId === currentUserId && c.recipientId === recipientId) ||
-          (c.requesterId === recipientId && c.recipientId === currentUserId)
-      )
-    ) {
-      return;
-    }
+    const existing = connections.find(
+      (c) =>
+        (c.requesterId === currentUserId && c.recipientId === recipientId) ||
+        (c.requesterId === recipientId && c.recipientId === currentUserId)
+    );
+    if (existing) return;
+
+    const now = new Date().toISOString().split("T")[0];
     const newConn: Connection = {
       id: `c_${Date.now()}`,
       requesterId: currentUserId,
       recipientId,
       status: "pending",
-      createdAt: new Date().toISOString().split("T")[0],
+      createdAt: now,
     };
     setConnections((prev) => [...prev, newConn]);
 
-    const recipient = users.find((u) => u.id === recipientId);
-    if (recipient) {
+    setNotifications((prev) => [
+      {
+        id: `n_${Date.now()}`,
+        userId: recipientId,
+        type: "connection",
+        title: `${currentUser.name} sent you a connection request`,
+        read: false,
+        createdAt: now,
+      },
+      ...prev,
+    ]);
+  };
+
+  const updateConnectionStatus = (
+    connectionId: ID,
+    status: ConnectionStatus | "declined" | "cancelled"
+  ) => {
+    const targetConn = connections.find((c) => c.id === connectionId);
+    if (!targetConn) return;
+
+    const now = new Date().toISOString().split("T")[0];
+
+    if (status === "declined" || status === "cancelled") {
+      setConnections((prev) => prev.filter((c) => c.id !== connectionId));
+    } else {
+      setConnections((prev) =>
+        prev.map((c) => (c.id === connectionId ? { ...c, status } : c))
+      );
+
+      const otherUserId =
+        targetConn.requesterId === currentUserId ? targetConn.recipientId : targetConn.requesterId;
+
       setNotifications((prev) => [
         {
           id: `n_${Date.now()}`,
-          userId: recipientId,
+          userId: otherUserId,
           type: "connection",
-          title: `${currentUser.name} wants to connect with you`,
+          title: `${currentUser.name} accepted your connection request`,
           read: false,
-          createdAt: new Date().toISOString().split("T")[0],
+          createdAt: now,
         },
         ...prev,
       ]);
@@ -612,6 +658,31 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
           )
         );
 
+        // Ensure connection exists and is connected
+        setConnections((prev) => {
+          const existing = prev.find(
+            (c) =>
+              (c.requesterId === targetReq.requesterId && c.recipientId === targetReq.recipientId) ||
+              (c.requesterId === targetReq.recipientId && c.recipientId === targetReq.requesterId)
+          );
+          if (existing) {
+            return prev.map((c) => (c.id === existing.id ? { ...c, status: "connected" } : c));
+          }
+          return [
+            ...prev,
+            {
+              id: `c_${Date.now()}`,
+              requesterId: targetReq.requesterId,
+              recipientId: targetReq.recipientId,
+              status: "connected",
+              createdAt: now,
+            },
+          ];
+        });
+
+        const requesterUser = users.find((u) => u.id === targetReq.requesterId);
+        const recipientUser = users.find((u) => u.id === targetReq.recipientId);
+
         setActivities((prev) => [
           {
             id: `act_${Date.now()}`,
@@ -620,7 +691,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
             targetUserId: targetReq.recipientId,
             skillId: targetReq.requestedSkillId,
             title: "Completed SkillSwap",
-            description: `Successfully completed a skill exchange.`,
+            description: `${requesterUser?.name || "Member"} & ${recipientUser?.name || "Member"} completed a SkillSwap.`,
             createdAt: now,
           },
           ...prev,
@@ -640,6 +711,10 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addReview = (data: { recipientId: ID; swapRequestId?: ID; skillId?: ID; rating: number; body: string }) => {
+    if (data.swapRequestId && reviews.some((r) => r.swapRequestId === data.swapRequestId && r.authorId === currentUserId)) {
+      return; // Prevent duplicate review for same swap request
+    }
+
     const now = new Date().toISOString().split("T")[0];
     const newRev: Review = {
       id: `rev_${Date.now()}`,
@@ -652,14 +727,33 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
     };
 
-    setReviews((prev) => [newRev, ...prev]);
+    setReviews((prev) => {
+      const updated = [newRev, ...prev];
+      const targetReviews = updated.filter((r) => r.recipientId === data.recipientId);
+      const avgRating = Number(
+        (targetReviews.reduce((sum, r) => sum + r.rating, 0) / targetReviews.length).toFixed(1)
+      );
 
-    const targetReviews = [...reviews.filter((r) => r.recipientId === data.recipientId), newRev];
-    const avgRating = Number((targetReviews.reduce((sum, r) => sum + r.rating, 0) / targetReviews.length).toFixed(1));
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => (u.id === data.recipientId ? { ...u, reputation: avgRating } : u))
+      );
 
-    setUsers((prev) =>
-      prev.map((u) => (u.id === data.recipientId ? { ...u, reputation: avgRating } : u))
-    );
+      return updated;
+    });
+
+    setActivities((prev) => [
+      {
+        id: `act_${Date.now()}`,
+        type: "review_posted",
+        userId: currentUserId,
+        targetUserId: data.recipientId,
+        skillId: data.skillId,
+        title: "Review Posted",
+        description: `${currentUser.name} left a ${data.rating}★ review for a SkillSwap partner.`,
+        createdAt: now,
+      },
+      ...prev,
+    ]);
 
     setNotifications((prev) => [
       {
@@ -723,6 +817,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
         addOrUpdateSkill,
         finishOnboarding,
         sendConnectionRequest,
+        updateConnectionStatus,
         createSwapRequest,
         updateSwapStatus,
         sendMessage,

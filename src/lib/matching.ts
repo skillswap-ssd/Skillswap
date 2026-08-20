@@ -22,9 +22,21 @@ export function computeMatches(
 ): ComputedMatch[] {
   const currentUserOffers = offers.filter((o) => o.userId === currentUserId);
   const currentUserRequests = requests.filter((r) => r.userId === currentUserId);
+  const currentUserProfile = profiles.find((p) => p.userId === currentUserId);
 
   const myOfferedSkillIds = new Set(currentUserOffers.map((o) => o.skillId));
   const myWantedSkillIds = new Set(currentUserRequests.map((r) => r.skillId));
+
+  const myOfferedCategories = new Set(
+    currentUserOffers
+      .map((o) => skills.find((s) => s.id === o.skillId)?.categoryId)
+      .filter(Boolean)
+  );
+  const myWantedCategories = new Set(
+    currentUserRequests
+      .map((r) => skills.find((s) => s.id === r.skillId)?.categoryId)
+      .filter(Boolean)
+  );
 
   const otherUsers = users.filter((u) => u.id !== currentUserId);
 
@@ -43,35 +55,80 @@ export function computeMatches(
     const matchingOfferedByThem = offeredByThemIds.filter((id) => myWantedSkillIds.has(id));
     const matchingWantedByThem = wantedByThemIds.filter((id) => myOfferedSkillIds.has(id));
 
-    let score = 50;
+    let score = 0;
     const explanations: string[] = [];
 
-    if (matchingOfferedByThem.length > 0) {
-      score += 25;
+    const isReciprocal = matchingOfferedByThem.length > 0 && matchingWantedByThem.length > 0;
+    const isOneWayTeach = matchingOfferedByThem.length > 0 && matchingWantedByThem.length === 0;
+    const isOneWayLearn = matchingWantedByThem.length > 0 && matchingOfferedByThem.length === 0;
+
+    if (isReciprocal) {
+      score += 65;
+      const teachNames = matchingWantedByThem
+        .map((id) => skills.find((s) => s.id === id)?.name)
+        .filter(Boolean)
+        .join(", ");
+      const learnNames = matchingOfferedByThem
+        .map((id) => skills.find((s) => s.id === id)?.name)
+        .filter(Boolean)
+        .join(", ");
+      explanations.push(`Reciprocal match: You teach ${teachNames} ⇄ They teach ${learnNames}.`);
+    } else if (isOneWayTeach) {
+      score += 35;
       const skillNames = matchingOfferedByThem
         .map((id) => skills.find((s) => s.id === id)?.name)
         .filter(Boolean)
         .join(", ");
-      explanations.push(`They offer ${skillNames}, which you want to learn.`);
-    }
-
-    if (matchingWantedByThem.length > 0) {
-      score += 25;
+      explanations.push(`They offer ${skillNames}, which matches your learning goals.`);
+    } else if (isOneWayLearn) {
+      score += 30;
       const skillNames = matchingWantedByThem
         .map((id) => skills.find((s) => s.id === id)?.name)
         .filter(Boolean)
         .join(", ");
-      explanations.push(`They want to learn ${skillNames}, which you can teach.`);
+      explanations.push(`They want to learn ${skillNames}, which you offer.`);
+    } else {
+      // Check category compatibility
+      const userOfferCategories = userOffers
+        .map((o) => skills.find((s) => s.id === o.skillId)?.categoryId)
+        .filter(Boolean);
+      const userRequestCategories = userRequests
+        .map((r) => skills.find((s) => s.id === r.skillId)?.categoryId)
+        .filter(Boolean);
+
+      const hasCategoryMatch =
+        userOfferCategories.some((catId) => myWantedCategories.has(catId)) ||
+        userRequestCategories.some((catId) => myOfferedCategories.has(catId));
+
+      if (hasCategoryMatch) {
+        score += 15;
+        explanations.push("Shared interest in related skill categories.");
+      }
     }
 
-    if (user.reputation >= 4.8) {
-      score += 5;
-      explanations.push(`Top-rated member with ${user.reputation}★ rating.`);
+    // Only apply secondary trust multipliers if there is some baseline compatibility
+    if (score > 0) {
+      if (user.reputation >= 4.8) {
+        score += 5;
+        explanations.push(`High member trust (${user.reputation}★).`);
+      } else if (user.reputation >= 4.5) {
+        score += 3;
+      }
+
+      if (user.responseRate >= 90) {
+        score += 5;
+        explanations.push(`Responsive member (${user.responseRate}% response rate).`);
+      }
+
+      if (currentUserProfile && userProfile.preference === currentUserProfile.preference) {
+        score += 5;
+        explanations.push(`Matching exchange preference (${userProfile.preference}).`);
+      }
     }
 
-    if (user.responseRate >= 90) {
-      score += 5;
-      explanations.push(`High response rate (${user.responseRate}%).`);
+    // If zero score (no skill or category match), skip or keep at baseline low
+    if (score < 10) {
+      return; // Exclude users with no meaningful compatibility
     }
 
     const offeredByThemSkills = matchingOfferedByThem
@@ -83,21 +140,21 @@ export function computeMatches(
       .filter((s): s is Skill => Boolean(s));
 
     let quality: ComputedMatch["quality"] = "Potential Exchange";
-    if (score >= 90 || (matchingOfferedByThem.length > 0 && matchingWantedByThem.length > 0)) {
+    if (score >= 70 && isReciprocal) {
       quality = "Strong Match";
-    } else if (score >= 70 || matchingOfferedByThem.length > 0 || matchingWantedByThem.length > 0) {
+    } else if (score >= 35 || isOneWayTeach || isOneWayLearn) {
       quality = "Good Fit";
     }
 
-    let reason = "Share complementary learning goals and complementary skill sets.";
-    if (matchingOfferedByThem.length > 0 && matchingWantedByThem.length > 0) {
+    let reason = "Complementary skill categories and learning goals.";
+    if (isReciprocal) {
       const teachName = skills.find((s) => s.id === matchingWantedByThem[0])?.name || "skills";
       const learnName = skills.find((s) => s.id === matchingOfferedByThem[0])?.name || "skills";
       reason = `Direct 2-way exchange: You teach ${teachName}; they teach ${learnName}.`;
-    } else if (matchingOfferedByThem.length > 0) {
+    } else if (isOneWayTeach) {
       const learnName = skills.find((s) => s.id === matchingOfferedByThem[0])?.name || "skills";
       reason = `They can teach you ${learnName}.`;
-    } else if (matchingWantedByThem.length > 0) {
+    } else if (isOneWayLearn) {
       const teachName = skills.find((s) => s.id === matchingWantedByThem[0])?.name || "skills";
       reason = `They want to learn ${teachName} from you.`;
     }
