@@ -2,6 +2,8 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { SkillCard } from "@/components/shared/skill-card";
+import { RecommendationReason } from "@/components/shared/recommendation-reason";
+import { ProfileStrength } from "@/components/shared/profile-strength";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,15 +11,17 @@ import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
-import { ArrowLeftRight, Check, CheckCircle2, MessageSquare, Star, UserCheck, UserPlus } from "lucide-react";
+import { calculateProfileStrength, getRecommendedUsers } from "@/lib/recommendations";
+import { ArrowLeftRight, Check, CheckCircle2, MessageSquare, Star, UserCheck, UserPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 
 export default function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = use(params);
 
   const {
     currentUserId,
+    currentUser,
     users,
     profiles,
     offers,
@@ -28,12 +32,19 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     sendConnectionRequest,
     getOrCreateConversation,
     createSwapRequest,
+    trackViewedProfile,
   } = useSkillSwap();
 
   const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
   const profile = profiles.find((p) => p.userId === user?.id);
 
   const isMe = user?.id === currentUserId;
+
+  useEffect(() => {
+    if (user && !isMe) {
+      trackViewedProfile(user.id);
+    }
+  }, [user, isMe, trackViewedProfile]);
 
   const userOffers = offers.filter((o) => o.userId === user?.id);
   const userRequests = requests.filter((r) => r.userId === user?.id);
@@ -53,6 +64,17 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
       (c.requesterId === currentUserId && c.recipientId === user?.id) ||
       (c.requesterId === user?.id && c.recipientId === currentUserId)
   );
+
+  // Profile completeness calculation if viewing own profile
+  const profileStrength = isMe
+    ? calculateProfileStrength(currentUser, profiles.find((p) => p.userId === currentUserId), offers, requests)
+    : null;
+
+  // Profile Intelligence Overlap if viewing peer profile
+  const recommendations = !isMe && user
+    ? getRecommendedUsers(currentUserId, users, profiles, skills, offers, requests)
+    : [];
+  const peerRecommendation = recommendations.find((r) => r.user.id === user?.id);
 
   // SkillSwap Request Modal state
   const [showSwapModal, setShowSwapModal] = useState(false);
@@ -184,6 +206,49 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           )}
         </aside>
       </section>
+
+      {/* Profile Completeness for Current User */}
+      {isMe && profileStrength && (
+        <section className="mt-8">
+          <ProfileStrength completeness={profileStrength} />
+        </section>
+      )}
+
+      {/* Contextual Overlap / Profile Intelligence for Peers */}
+      {!isMe && peerRecommendation && (
+        <section className="mt-8">
+          <Card className="border-2 border-[var(--primary)] bg-[var(--surface)]">
+            <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-[var(--primary)]">
+              <Sparkles size={14} /> Good fit because...
+            </div>
+            <p className="text-sm font-semibold text-[var(--foreground)] mt-1">{peerRecommendation.primaryReason}</p>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 text-xs">
+              <div className="p-2.5 border border-[var(--border)] bg-[var(--surface-muted)]">
+                <span className="font-bold text-[var(--muted)] uppercase block text-[10px]">You may learn from them</span>
+                <b className="text-sm font-display text-[var(--primary)]">
+                  {peerRecommendation.offeredSkillNames.join(", ") || "Skills"}
+                </b>
+              </div>
+
+              <div className="p-2.5 border border-[var(--border)] bg-[var(--surface-muted)]">
+                <span className="font-bold text-[var(--muted)] uppercase block text-[10px]">You may offer them</span>
+                <b className="text-sm font-display text-[var(--primary)]">
+                  {peerRecommendation.wantedSkillNames.join(", ") || "Skills"}
+                </b>
+              </div>
+            </div>
+
+            {peerRecommendation.reasons.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {peerRecommendation.reasons.map((r, idx) => (
+                  <RecommendationReason key={idx} reason={r.label} category={r.category} />
+                ))}
+              </div>
+            )}
+          </Card>
+        </section>
+      )}
 
       <h2 className="mt-12 font-display text-4xl">Skills Offered</h2>
       <div className="mt-4 grid gap-4 md:grid-cols-3">

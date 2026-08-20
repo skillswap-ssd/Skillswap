@@ -2,6 +2,7 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
+import { RecommendationReason } from "@/components/shared/recommendation-reason";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,12 +85,15 @@ export default function MatchesPage() {
             .filter(Boolean)
             .join(", ");
 
+          const myTeachName = match.wantedByThem[0]?.name || "Your skills";
+          const myLearnName = match.offeredByThem[0]?.name || "Their skills";
+
           return (
             <Card key={match.id} className="grid gap-5 lg:grid-cols-[1fr_auto] items-start">
               <div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge>
-                    {match.quality} · {match.score}% match score
+                    {match.quality}
                   </Badge>
                   <span className="text-xs font-bold text-[var(--muted)]">
                     {match.user.location} · {match.user.reputation}★ rating
@@ -109,13 +113,28 @@ export default function MatchesPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 border-l-4 border-[var(--primary)] bg-[var(--surface-muted)] p-3.5">
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-[var(--primary)]">
-                    <Sparkles size={16} /> Why you match:
+                {/* Smart Match Breakdown */}
+                <div className="mt-4 border-l-4 border-[var(--primary)] bg-[var(--surface-muted)] p-3.5 space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-[var(--primary)] uppercase tracking-wider">
+                    <Sparkles size={14} /> Smart Match Explanation
                   </div>
-                  <p className="mt-1 text-sm font-semibold">{match.reason}</p>
+
+                  <p className="text-xs font-bold text-[var(--foreground)]">{match.reason}</p>
+
+                  <div className="grid sm:grid-cols-2 gap-2 pt-1 text-xs">
+                    <div className="p-2 border border-[var(--border)] bg-[var(--surface)]">
+                      <span className="font-bold text-[var(--muted)] uppercase block text-[10px]">You teach → They want</span>
+                      <span className="font-bold text-[var(--primary)]">{myTeachName}</span>
+                    </div>
+
+                    <div className="p-2 border border-[var(--border)] bg-[var(--surface)]">
+                      <span className="font-bold text-[var(--muted)] uppercase block text-[10px]">They teach → You want</span>
+                      <span className="font-bold text-[var(--primary)]">{myLearnName}</span>
+                    </div>
+                  </div>
+
                   {match.explanation.length > 0 && (
-                    <ul className="mt-2 list-disc list-inside text-xs text-[var(--muted)] space-y-0.5">
+                    <ul className="mt-2 list-disc list-inside text-xs text-[var(--muted)] space-y-0.5 pt-1">
                       {match.explanation.map((exp, idx) => (
                         <li key={idx}>{exp}</li>
                       ))}
@@ -178,7 +197,7 @@ export default function MatchesPage() {
             <Dialog title={`Match Breakdown: ${selectedMatch.user.name}`}>
               <div className="grid gap-4 py-2">
                 <div className="p-3 border border-[var(--border)] bg-[var(--surface-muted)] text-sm">
-                  <span className="font-bold block">{selectedMatch.quality} ({selectedMatch.score}% Fit Score)</span>
+                  <span className="font-bold block">{selectedMatch.quality}</span>
                   <p className="mt-1">{selectedMatch.reason}</p>
                 </div>
 

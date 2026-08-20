@@ -2,16 +2,36 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
+import { RecommendationReason } from "@/components/shared/recommendation-reason";
+import { RelatedSkills } from "@/components/shared/related-skills";
 import { SkillCard } from "@/components/shared/skill-card";
 import { UserCard } from "@/components/shared/user-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
-import { X } from "lucide-react";
+import {
+  getPeopleWhoCanTeach,
+  getPeopleWhoWantToLearn,
+  getRecommendedUsers,
+  getSkillSuggestions,
+} from "@/lib/recommendations";
+import { getRelatedSkillsForSkill } from "@/lib/skillRelations";
+import { ArrowRight, Sparkles, X } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function DiscoverPage() {
-  const { users, profiles, skills, categories, offers, requests } = useSkillSwap();
+  const {
+    currentUserId,
+    users,
+    profiles,
+    skills,
+    categories,
+    offers,
+    requests,
+    recentlyViewedSkills,
+    recentlyViewedProfiles,
+  } = useSkillSwap();
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -37,6 +57,9 @@ export default function DiscoverPage() {
     highReputationOnly ||
     availableThisWeek;
 
+  // Search relation lookup
+  const relatedSkillsFromQuery = query.trim() ? getRelatedSkillsForSkill(query) : [];
+
   const filteredSkills = skills.filter((s) => {
     if (selectedCategory && s.categoryId !== selectedCategory) return false;
     if (selectedProficiency && s.level !== selectedProficiency) return false;
@@ -48,7 +71,11 @@ export default function DiscoverPage() {
       const matchesDesc = s.description.toLowerCase().includes(q);
       const matchesCategory = categories.find((c) => c.id === s.categoryId)?.name.toLowerCase().includes(q);
       const matchesTags = s.tags.some((t) => t.toLowerCase().includes(q));
-      if (!matchesName && !matchesDesc && !matchesCategory && !matchesTags) return false;
+      const matchesRelated = relatedSkillsFromQuery.some(
+        (rel) => rel.name.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(rel.name.toLowerCase())
+      );
+
+      if (!matchesName && !matchesDesc && !matchesCategory && !matchesTags && !matchesRelated) return false;
     }
 
     return true;
@@ -92,10 +119,16 @@ export default function DiscoverPage() {
       const matchesBio = profile?.bio.toLowerCase().includes(q) || profile?.headline.toLowerCase().includes(q);
       const matchesInterests = u.interests.some((i) => i.toLowerCase().includes(q));
       const matchesOfferedSkill = offeredSkills.some(
-        (s) => s?.name.toLowerCase().includes(q) || s?.tags.some((t) => t.toLowerCase().includes(q))
+        (s) =>
+          s?.name.toLowerCase().includes(q) ||
+          s?.tags.some((t) => t.toLowerCase().includes(q)) ||
+          relatedSkillsFromQuery.some((rel) => s?.name.toLowerCase().includes(rel.name.toLowerCase()))
       );
       const matchesWantedSkill = wantedSkills.some(
-        (s) => s?.name.toLowerCase().includes(q) || s?.tags.some((t) => t.toLowerCase().includes(q))
+        (s) =>
+          s?.name.toLowerCase().includes(q) ||
+          s?.tags.some((t) => t.toLowerCase().includes(q)) ||
+          relatedSkillsFromQuery.some((rel) => s?.name.toLowerCase().includes(rel.name.toLowerCase()))
       );
 
       if (
@@ -113,24 +146,41 @@ export default function DiscoverPage() {
     return true;
   });
 
+  // Intelligent sections when browsing default
+  const bestMatches = getRecommendedUsers(
+    currentUserId,
+    users,
+    profiles,
+    skills,
+    offers,
+    requests,
+    [],
+    [],
+    { recentlyViewedSkillIds: recentlyViewedSkills, recentlyViewedUserIds: recentlyViewedProfiles }
+  );
+
+  const peopleWhoCanTeach = getPeopleWhoCanTeach(currentUserId, users, profiles, skills, offers, requests);
+  const peopleWhoNeedMySkills = getPeopleWhoWantToLearn(currentUserId, users, profiles, skills, offers, requests);
+  const skillSuggestions = getSkillSuggestions(currentUserId, skills, offers, requests);
+
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Discover"
+        eyebrow="Discover Intelligence"
         title="Find people, skills, and mutual value."
-        body="Search by topic or filter by category, proficiency, format, reputation, and availability."
+        body="Search by topic or filter by category, proficiency, format, reputation, and availability with intelligent skill relations."
       />
 
       <div className="grid gap-2">
         <label htmlFor="discover-search" className="font-bold text-sm">
-          Search skills, people, and interests
+          Search skills, people, interests, or related topics
         </label>
         <div className="relative">
           <Input
             id="discover-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Try Python, photography, speaking, Brooklyn, design..."
+            placeholder="Try Python, photography, speaking, design, video..."
             aria-label="Search skills and people"
           />
           {query && (
@@ -143,6 +193,13 @@ export default function DiscoverPage() {
             </button>
           )}
         </div>
+
+        {/* Query Relation Suggestions */}
+        {query.trim() !== "" && relatedSkillsFromQuery.length > 0 && (
+          <div className="mt-1">
+            <RelatedSkills skillIdOrName={query} label="Related topics recognized" />
+          </div>
+        )}
       </div>
 
       <div className="my-5 flex flex-wrap items-center gap-2">
@@ -219,48 +276,185 @@ export default function DiscoverPage() {
         )}
       </div>
 
-      <div className="mb-6 text-sm font-bold text-[var(--muted)] flex justify-between items-center border-b border-[var(--border)] pb-2">
-        <span>
-          Showing {filteredUsers.length} {filteredUsers.length === 1 ? "person" : "people"} and {filteredSkills.length} {filteredSkills.length === 1 ? "skill" : "skills"}
-        </span>
-      </div>
-
-      {filteredUsers.length === 0 && filteredSkills.length === 0 ? (
-        <div className="grid gap-4">
-          <EmptyState
-            title="No results found"
-            body="No people or skills matched your active search and filter criteria. Try adjusting your query or resetting filters."
-          />
-          <div className="flex justify-center">
-            <button
-              onClick={clearAllFilters}
-              className="px-4 py-2 bg-[var(--foreground)] text-[var(--background)] font-bold text-sm"
-            >
-              Clear all filters
-            </button>
+      {/* When Active Search/Filters are applied */}
+      {hasActiveFilters ? (
+        <div>
+          <div className="mb-6 text-sm font-bold text-[var(--muted)] flex justify-between items-center border-b border-[var(--border)] pb-2">
+            <span>
+              Showing {filteredUsers.length} {filteredUsers.length === 1 ? "person" : "people"} and {filteredSkills.length} {filteredSkills.length === 1 ? "skill" : "skills"}
+            </span>
           </div>
+
+          {filteredUsers.length === 0 && filteredSkills.length === 0 ? (
+            <div className="grid gap-6">
+              <EmptyState
+                title={`No exact results found for "${query}"`}
+                body="No current members or skills matched your active query. Explore related skill areas below:"
+              />
+
+              {/* Intelligent Empty State Suggestions */}
+              <div className="p-4 border-2 border-[var(--primary)] bg-[var(--surface)]">
+                <span className="font-bold text-sm text-[var(--primary)] block mb-2">
+                  Try exploring related skill areas:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {relatedSkillsFromQuery.map((rel) => (
+                    <button
+                      key={rel.id}
+                      onClick={() => setQuery(rel.name)}
+                      className="px-3 py-1.5 border border-[var(--border)] bg-[var(--surface-muted)] font-bold text-xs hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
+                    >
+                      Search &ldquo;{rel.name}&rdquo; →
+                    </button>
+                  ))}
+                  {relatedSkillsFromQuery.length === 0 && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="px-3 py-1.5 bg-[var(--foreground)] text-[var(--background)] font-bold text-xs"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <section className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
+              <div>
+                <h2 className="font-display text-4xl">Potential exchanges</h2>
+                <div className="mt-4 grid gap-4">
+                  {filteredUsers.map((u) => {
+                    const p = profiles.find((prof) => prof.userId === u.id);
+                    const rec = bestMatches.find((m) => m.user.id === u.id);
+                    return (
+                      <UserCard
+                        key={u.id}
+                        user={u}
+                        headline={p?.headline || ""}
+                        match={rec ? rec.primaryReason : undefined}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="font-display text-4xl">Skills in motion</h2>
+                <div className="mt-4 grid gap-4">
+                  {filteredSkills.map((s) => (
+                    <SkillCard key={s.id} skill={s} />
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       ) : (
-        <section className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
-          <div>
-            <h2 className="font-display text-4xl">Potential exchanges</h2>
-            <div className="mt-4 grid gap-4">
-              {filteredUsers.map((u) => {
-                const p = profiles.find((prof) => prof.userId === u.id);
-                return <UserCard key={u.id} user={u} headline={p?.headline || ""} />;
-              })}
+        /* Default Intelligent Discovery View */
+        <div className="space-y-12 mt-8">
+          {/* Section: Best Matches */}
+          <section>
+            <div className="flex justify-between items-center border-b border-[var(--border)] pb-2 mb-4">
+              <div>
+                <h2 className="font-display text-3xl">Best matches</h2>
+                <p className="text-xs text-[var(--muted)]">Calculated from direct reciprocal and category synergy.</p>
+              </div>
+              <Link href="/matches" className="text-xs font-bold text-[var(--primary)] hover:underline">
+                View Matches →
+              </Link>
             </div>
-          </div>
 
-          <div>
-            <h2 className="font-display text-4xl">Skills in motion</h2>
-            <div className="mt-4 grid gap-4">
-              {filteredSkills.map((s) => (
-                <SkillCard key={s.id} skill={s} />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {bestMatches.slice(0, 3).map((rec) => (
+                <div key={rec.user.id} className="border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-display text-xl">
+                        <Link href={`/profile/${rec.user.username}`} className="hover:underline">
+                          {rec.user.name}
+                        </Link>
+                      </h3>
+                      <span className="text-xs font-bold text-[var(--muted)]">{rec.user.reputation}★</span>
+                    </div>
+                    <p className="text-xs text-[var(--muted)] mt-0.5">{rec.profile.headline}</p>
+
+                    <div className="my-2.5">
+                      <RecommendationReason
+                        reason={rec.reasons[0]?.label || rec.primaryReason}
+                        category={rec.reasons[0]?.category}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[var(--border)] flex justify-between items-center text-xs">
+                    <span className="font-bold text-[var(--muted)]">{rec.quality}</span>
+                    <Link href={`/profile/${rec.user.username}`} className="font-bold text-[var(--primary)] hover:underline">
+                      Profile →
+                    </Link>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* Section: People Who Can Teach What You Want */}
+          {peopleWhoCanTeach.length > 0 && (
+            <section>
+              <div className="border-b border-[var(--border)] pb-2 mb-4">
+                <h2 className="font-display text-3xl">People who can teach what you want</h2>
+                <p className="text-xs text-[var(--muted)]">Peers offering skills on your learning shelf.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {peopleWhoCanTeach.slice(0, 2).map((t) => (
+                  <UserCard key={t.user.id} user={t.user} headline={t.profile.headline} match={t.primaryReason} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Section: People Who Need Your Skills */}
+          {peopleWhoNeedMySkills.length > 0 && (
+            <section>
+              <div className="border-b border-[var(--border)] pb-2 mb-4">
+                <h2 className="font-display text-3xl">People who need your skills</h2>
+                <p className="text-xs text-[var(--muted)]">Peers seeking skills you currently offer.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {peopleWhoNeedMySkills.slice(0, 2).map((l) => (
+                  <UserCard key={l.user.id} user={l.user} headline={l.profile.headline} match={l.primaryReason} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Section: Explore Related Skills */}
+          <section>
+            <div className="border-b border-[var(--border)] pb-2 mb-4">
+              <h2 className="font-display text-3xl">Explore related skills</h2>
+              <p className="text-xs text-[var(--muted)]">Recommended skills aligned with community momentum.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {skillSuggestions.map(({ skill, reason }) => (
+                <div key={skill.id} className="border border-[var(--border)] bg-[var(--surface-muted)] p-4 flex flex-col justify-between">
+                  <div>
+                    <RecommendationReason reason={reason} category="explored" />
+                    <h3 className="font-display text-2xl mt-2">{skill.name}</h3>
+                    <p className="text-xs text-[var(--muted)] mt-1">{skill.description}</p>
+                  </div>
+                  <div className="mt-4 pt-2 border-t border-[var(--border)] flex justify-between items-center text-xs">
+                    <span className="font-bold text-[var(--muted)]">{skill.popularity} interested</span>
+                    <button
+                      onClick={() => setQuery(skill.name)}
+                      className="font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
+                    >
+                      Find Swaps <ArrowRight size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       )}
 
       <section className="mt-12">
