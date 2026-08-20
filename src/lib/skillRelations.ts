@@ -40,15 +40,21 @@ export const SKILL_RELATIONS_MAP: Record<string, { relatedIds: string[]; related
     relatedNames: ["Public Speaking", "French Conversation", "Translation & Localization", "Cultural Studies"],
   },
   guitar: {
-    relatedIds: ["speaking", "music-theory", "audio-production", "singing"],
-    relatedNames: ["Public Speaking", "Music Theory", "Audio Production", "Vocal Performance"],
+    relatedIds: ["music-theory", "audio-production", "singing", "songwriting"],
+    relatedNames: ["Music Theory", "Audio Production", "Vocal Performance", "Songwriting"],
   },
 };
 
 /**
  * Gets related skill names for a given skill ID or query string.
+ * Returns an empty array if no true relationship exists in the curated map.
  */
-export function getRelatedSkillsForSkill(skillIdOrName: string): { id: string; name: string }[] {
+export function getRelatedSkillsForSkill(
+  skillIdOrName: string,
+  categorySkills?: { id: string; name: string }[]
+): { id: string; name: string }[] {
+  if (!skillIdOrName || !skillIdOrName.trim()) return [];
+
   const normalized = skillIdOrName.trim().toLowerCase();
 
   // Look up by exact key
@@ -70,10 +76,11 @@ export function getRelatedSkillsForSkill(skillIdOrName: string): { id: string; n
     }
   }
 
-  // Default fallback related skills
-  return [
-    { id: "design", name: "Graphic Design" },
-    { id: "python", name: "Python" },
-    { id: "marketing", name: "Digital Marketing" },
-  ];
+  // Same category fallback if category skills are supplied
+  if (categorySkills && categorySkills.length > 0) {
+    return categorySkills.filter((s) => s.id.toLowerCase() !== normalized && s.name.toLowerCase() !== normalized);
+  }
+
+  // No meaningful relationship found -> return empty array instead of fabricating relevance
+  return [];
 }

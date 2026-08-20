@@ -109,7 +109,17 @@ export default function SkillsPage() {
                   </div>
                 ))
               ) : (
-                <EmptyState title="No skills offered yet" body="Add skills you can teach or share with peers." />
+                <div className="col-span-full space-y-4">
+                  <EmptyState title="No skills offered yet" body="Add skills you can teach or share with peers, or test teaching with a practice partner." />
+                  <div className="flex justify-center">
+                    <Link
+                      href="/skills/new"
+                      className="rounded-lg bg-[#1c2430] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d3748]"
+                    >
+                      Add a Skill
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -124,7 +134,17 @@ export default function SkillsPage() {
                   </div>
                 ))
               ) : (
-                <EmptyState title="No learning goals set" body="Add skills you want to learn to help discover complementary mentors." />
+                <div className="col-span-full space-y-4">
+                  <EmptyState title="No learning goals set" body="Add skills you want to learn to help discover complementary mentors." />
+                  <div className="flex justify-center">
+                    <Link
+                      href="/skills/new"
+                      className="rounded-lg bg-[#1c2430] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d3748]"
+                    >
+                      Add a Learning Goal
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           </div>

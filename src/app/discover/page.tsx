@@ -9,6 +9,7 @@ import { UserCard } from "@/components/shared/user-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
+import { usePractice } from "@/lib/context/practice-context";
 import {
   getPeopleWhoCanTeach,
   getPeopleWhoWantToLearn,
@@ -16,7 +17,7 @@ import {
   getSkillSuggestions,
 } from "@/lib/recommendations";
 import { getRelatedSkillsForSkill } from "@/lib/skillRelations";
-import { ArrowRight, Sparkles, X } from "lucide-react";
+import { ArrowRight, Sparkles, X, Bot } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -32,6 +33,8 @@ export default function DiscoverPage() {
     recentlyViewedSkills,
     recentlyViewedProfiles,
   } = useSkillSwap();
+
+  const { simulatedPeople } = usePractice();
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -275,6 +278,54 @@ export default function DiscoverPage() {
           </button>
         )}
       </div>
+
+      {/* DISTINCT SECTION: Practice before you swap */}
+      <section className="my-8 rounded-xl border border-[#e2ded8] bg-[#f7f5f0] p-6 text-[#1c2430]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="rounded bg-[#1c2430] px-2 py-0.5 text-xs font-semibold text-white">
+                PRACTICE BEFORE YOU SWAP
+              </span>
+            </div>
+            <h3 className="font-serif text-xl font-bold">Not ready for a real SkillSwap yet?</h3>
+            <p className="mt-1 text-sm text-[#64748b] max-w-2xl">
+              Practice safely with simulated mentors, interviewers, and study partners to gain confidence before connecting with the real community.
+            </p>
+          </div>
+          <Link
+            href="/practice"
+            className="rounded-lg bg-[#1c2430] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2d3748] transition shrink-0"
+          >
+            Explore Practice Partners →
+          </Link>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-[#e2ded8]">
+          {simulatedPeople.map((person) => (
+            <Link
+              key={person.id}
+              href={`/practice/partner/${person.id}`}
+              className="rounded-lg border border-[#e2ded8] bg-white p-3 hover:bg-[#f0ece1] transition flex items-center gap-3"
+            >
+              <img
+                src={person.avatar}
+                alt={person.name}
+                className="h-10 w-10 rounded-full border border-[#e2ded8] object-cover"
+              />
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-1">
+                  <span className="font-serif text-xs font-bold text-[#1c2430] truncate">{person.name}</span>
+                  <span className="text-[9px] font-bold text-[#64748b] bg-[#f7f5f0] border border-[#e2ded8] px-1 rounded">
+                    SIM
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#64748b] truncate">{person.badgeLabel}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* When Active Search/Filters are applied */}
       {hasActiveFilters ? (

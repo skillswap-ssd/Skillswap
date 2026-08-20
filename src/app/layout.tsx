@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { AppShell } from "@/components/layout/app-shell";
+import { PracticeProvider } from "@/lib/context/practice-context";
 import { SkillSwapProvider } from "@/lib/context/skillswap-context";
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="grain">
         <SkillSwapProvider>
-          <AppShell>{children}</AppShell>
+          <PracticeProvider>
+            <AppShell>{children}</AppShell>
+          </PracticeProvider>
         </SkillSwapProvider>
       </body>
     </html>
