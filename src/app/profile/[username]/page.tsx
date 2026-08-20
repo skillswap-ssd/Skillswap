@@ -11,8 +11,9 @@ import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
+import { usePractice } from "@/lib/context/practice-context";
 import { calculateProfileStrength, getRecommendedUsers } from "@/lib/recommendations";
-import { ArrowLeftRight, Check, CheckCircle2, MessageSquare, Star, UserCheck, UserPlus, Sparkles } from "lucide-react";
+import { ArrowLeftRight, Check, CheckCircle2, MessageSquare, Star, UserCheck, UserPlus, Sparkles, Bot } from "lucide-react";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
@@ -34,6 +35,8 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     createSwapRequest,
     trackViewedProfile,
   } = useSkillSwap();
+
+  const { sessions, feedbacks } = usePractice();
 
   const user = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
   const profile = profiles.find((p) => p.userId === user?.id);
@@ -211,6 +214,49 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
       {isMe && profileStrength && (
         <section className="mt-8">
           <ProfileStrength completeness={profileStrength} />
+        </section>
+      )}
+
+      {/* DISTINCT SECTION: Practice Activity (Separated from Community Reputation) */}
+      {isMe && (
+        <section className="mt-8 rounded-xl border border-[#e2ded8] bg-[#f7f5f0] p-6 text-[#1c2430]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="rounded bg-[#1c2430] px-2.5 py-0.5 text-xs font-semibold text-white">
+                  PRACTICE ACTIVITY
+                </span>
+                <span className="text-xs text-[#64748b]">Private practice metrics</span>
+              </div>
+              <h3 className="font-serif text-2xl font-bold">Your Practice Log</h3>
+              <p className="text-xs text-[#64748b] mt-1">
+                Separated from community reputation. Tracks local simulation sessions with AI practice partners.
+              </p>
+            </div>
+            <Link
+              href="/practice/history"
+              className="rounded-lg border border-[#e2ded8] bg-white px-4 py-2 text-xs font-semibold text-[#1c2430] hover:bg-[#f0ece1]"
+            >
+              View Full Log ({sessions.length})
+            </Link>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#e2ded8]">
+            <div className="bg-white p-3 rounded-lg border border-[#e2ded8]">
+              <div className="text-[11px] font-semibold text-[#64748b] uppercase">Practice Sessions</div>
+              <div className="font-serif text-2xl font-bold text-[#1c2430] mt-1">{sessions.length}</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-[#e2ded8]">
+              <div className="text-[11px] font-semibold text-[#64748b] uppercase">Feedback Evaluations</div>
+              <div className="font-serif text-2xl font-bold text-[#1c2430] mt-1">{feedbacks.length}</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-[#e2ded8]">
+              <div className="text-[11px] font-semibold text-[#64748b] uppercase">Latest Readiness</div>
+              <div className="font-serif text-2xl font-bold text-[#1c2430] mt-1">
+                {feedbacks[0] ? `${feedbacks[0].readinessScore}/100` : "N/A"}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 

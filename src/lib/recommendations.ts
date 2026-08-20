@@ -153,6 +153,9 @@ export function getRecommendedUsers(
   // Excluded users (declined connections or existing active swaps)
   const excludedUserIds = new Set<string>([currentUserId]);
 
+  const normalizedViewedUserIds = (behavioral.recentlyViewedUserIds || []).map((id) => id.trim().toLowerCase());
+  const normalizedViewedSkillIds = (behavioral.recentlyViewedSkillIds || []).map((id) => id.trim().toLowerCase());
+
   const recommendedList: RecommendedUser[] = [];
 
   // Evaluate each other user
@@ -166,6 +169,8 @@ export function getRecommendedUsers(
 
     const userOffers = offers.filter((o) => o.userId === user.id);
     const userRequests = requests.filter((r) => r.userId === user.id);
+
+    const userOfferedSkillIds = userOffers.map((o) => o.skillId.toLowerCase());
 
     const offeredSkillNames = userOffers
       .map((o) => skills.find((s) => s.id === o.skillId)?.name)
@@ -231,8 +236,8 @@ export function getRecommendedUsers(
       });
     }
 
-    // Behavioral signals: Recently viewed skills or profile
-    if (behavioral.recentlyViewedUserIds?.includes(user.id)) {
+    // Behavioral signals: Recently viewed profile or recently viewed skill IDs (strictly by skill ID)
+    if (normalizedViewedUserIds.includes(user.id.toLowerCase())) {
       score += 3;
       reasons.push({
         label: "Recently viewed profile in this session",
@@ -241,10 +246,8 @@ export function getRecommendedUsers(
     }
 
     if (
-      behavioral.recentlyViewedSkillIds &&
-      offeredSkillNames.some((skName) =>
-        behavioral.recentlyViewedSkillIds?.some((id) => id.toLowerCase().includes(skName.toLowerCase()))
-      )
+      normalizedViewedSkillIds.length > 0 &&
+      userOfferedSkillIds.some((skId) => normalizedViewedSkillIds.includes(skId))
     ) {
       score += 4;
       reasons.push({

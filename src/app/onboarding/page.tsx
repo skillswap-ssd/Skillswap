@@ -140,7 +140,7 @@ export default function OnboardingPage() {
                 <Input
                   value={learningStyle}
                   onChange={(e) => setLearningStyle(e.target.value)}
-                  placeholder="e.g. Hands-on projects, weekly chats"
+                  placeholder="e.g. Pairing & practice"
                 />
               </div>
 
@@ -324,6 +324,31 @@ export default function OnboardingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </Card>
+
+        {/* Next Step Path Recommendation Card */}
+        <Card className="border-2 border-[var(--foreground)] bg-[#f7f5f0]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span className="rounded bg-[#1c2430] px-2 py-0.5 text-xs font-semibold text-white">
+                RECOMMENDED NEXT STEP
+              </span>
+              <h3 className="font-serif text-xl font-bold mt-2 text-[#1c2430]">
+                Choose how you want to start
+              </h3>
+              <p className="text-xs text-[#64748b] mt-1">
+                You can match directly with real community members or practice first with a simulated partner.
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Link
+                href="/practice"
+                className="rounded-lg border border-[#e2ded8] bg-white px-3.5 py-2 text-xs font-bold text-[#1c2430] hover:bg-[#f0ece1]"
+              >
+                Practice First →
+              </Link>
+            </div>
           </div>
         </Card>
 

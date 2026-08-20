@@ -150,10 +150,26 @@ export default function ConnectionsPage() {
           </div>
 
           {filteredSwaps.length === 0 ? (
-            <EmptyState
-              title="No exchange requests found"
-              body="Discover complementary peers on the Matches page and send a SkillSwap request to start trading skills."
-            />
+            <div className="space-y-6">
+              <EmptyState
+                title="No exchange requests found"
+                body="Discover complementary peers or practice skills with simulated partners first."
+              />
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link
+                  href="/discover"
+                  className="rounded-lg bg-[#1c2430] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d3748]"
+                >
+                  Explore Community Matches
+                </Link>
+                <Link
+                  href="/practice"
+                  className="rounded-lg border border-[#e2ded8] bg-white px-4 py-2 text-sm font-semibold text-[#1c2430] hover:bg-[#f0ece1]"
+                >
+                  Practice First
+                </Link>
+              </div>
+            </div>
           ) : (
             filteredSwaps.map((sr) => {
               const isRequester = sr.requesterId === currentUserId;
@@ -298,10 +314,20 @@ export default function ConnectionsPage() {
       {tab === "connections" && (
         <div className="grid gap-4">
           {myConnections.length === 0 ? (
-            <EmptyState
-              title="No connections yet"
-              body="Connect with peers on profiles or matches to keep a directory of trusted learning partners."
-            />
+            <div className="space-y-6">
+              <EmptyState
+                title="No connections yet"
+                body="Connect with peers on profiles or matches to keep a directory of trusted learning partners."
+              />
+              <div className="flex justify-center">
+                <Link
+                  href="/discover"
+                  className="rounded-lg bg-[#1c2430] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d3748]"
+                >
+                  Discover Peers to Connect With
+                </Link>
+              </div>
+            </div>
           ) : (
             myConnections.map((conn) => {
               const isRequester = conn.requesterId === currentUserId;

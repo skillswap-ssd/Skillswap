@@ -80,10 +80,26 @@ export default function MessagesPage() {
       />
 
       {myConversations.length === 0 ? (
-        <EmptyState
-          title="No conversations yet"
-          body="Start by finding a peer on Discover or Matches, and click 'Message' or 'Start SkillSwap' to start chatting."
-        />
+        <div className="space-y-6">
+          <EmptyState
+            title="No conversations yet"
+            body="Start by finding a peer on Discover or Matches, or practice with a simulated partner."
+          />
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link
+              href="/discover"
+              className="rounded-lg bg-[#1c2430] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d3748]"
+            >
+              Find someone to SkillSwap with
+            </Link>
+            <Link
+              href="/practice"
+              className="rounded-lg border border-[#e2ded8] bg-white px-4 py-2 text-sm font-semibold text-[#1c2430] hover:bg-[#f0ece1]"
+            >
+              Start Practice Session
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="grid border border-[var(--border)] bg-[var(--surface-elevated)] lg:grid-cols-[300px_1fr] min-h-[600px]">
           {/* Conversation Sidebar */}
