@@ -15,8 +15,12 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function MatchesPage() {
-  const { currentUserId, users, profiles, skills, offers, requests, createSwapRequest, getOrCreateConversation } =
+  const { currentUserId, users, profiles, skills, offers, requests, createSwapRequest, getOrCreateConversation, getCreditBalance, canAfford } =
     useSkillSwap();
+
+  const availableCredits = getCreditBalance(currentUserId);
+  const requiredCredits = 2;
+  const hasSufficientCredits = canAfford(currentUserId, requiredCredits);
 
   const [selectedMatch, setSelectedMatch] = useState<ComputedMatch | null>(null);
   const [requestModalMatch, setRequestModalMatch] = useState<ComputedMatch | null>(null);
@@ -333,11 +337,25 @@ export default function MatchesPage() {
                     />
                   </div>
 
+                  <div className={`p-3 border rounded-sm text-xs font-semibold ${hasSufficientCredits ? 'bg-[var(--surface-muted)] border-[var(--border)]' : 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'}`}>
+                    <div className="flex justify-between items-center">
+                      <span>This exchange requires 🪙 {requiredCredits} credits.</span>
+                      <span className="font-bold">You have 🪙 {availableCredits} available.</span>
+                    </div>
+                    {!hasSufficientCredits && (
+                      <p className="mt-1 font-bold text-red-600 dark:text-red-400">
+                        INSUFFICIENT CREDITS: You need {requiredCredits} credits to propose an exchange. Teach skills to earn more credits.
+                      </p>
+                    )}
+                  </div>
+
                   <div className="flex justify-end gap-3 mt-2">
                     <Button type="button" variant="ghost" onClick={() => setRequestModalMatch(null)}>
                       Cancel
                     </Button>
-                    <Button type="submit">Send SkillSwap Request</Button>
+                    <Button type="submit" disabled={!hasSufficientCredits}>
+                      {hasSufficientCredits ? "Send SkillSwap Request" : "Insufficient Credits"}
+                    </Button>
                   </div>
                 </form>
               )}

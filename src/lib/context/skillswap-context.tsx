@@ -33,6 +33,28 @@ import type {
   User,
 } from "@/data/models";
 
+import type {
+  CreditAccount,
+  CreditAuditLog,
+  CreditHold,
+  CreditOperationResult,
+  CreditTransaction,
+} from "@/lib/credits/credit-types";
+import { CREDIT_RULES } from "@/lib/credits/credit-rules";
+import {
+  awardCredits as engineAwardCredits,
+  captureCreditHold as engineCaptureCreditHold,
+  completeSkillSwapAtomic,
+  createCreditHold as engineCreateCreditHold,
+  createEmptyCreditState,
+  getCreditAudit as engineGetCreditAudit,
+  grantInitialCredits,
+  refundCredits as engineRefundCredits,
+  releaseCreditHold as engineReleaseCreditHold,
+  type CreditEngineState,
+} from "@/lib/credits/credit-engine";
+import { buildIdempotencyKey } from "@/lib/credits/credit-utils";
+
 interface SkillSwapContextType {
   currentUserId: ID;
   currentUser: User;
@@ -52,6 +74,51 @@ interface SkillSwapContextType {
 
   recentlyViewedSkills: string[];
   recentlyViewedProfiles: string[];
+
+  // Credit Subsystem API
+  getCreditAccount: (userId?: ID) => CreditAccount;
+  getCreditBalance: (userId?: ID) => number;
+  getCreditTransactions: (userId?: ID) => CreditTransaction[];
+  getCreditHolds: (userId?: ID) => CreditHold[];
+  canAfford: (userId: ID, amount?: number) => boolean;
+  holdCredits: (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system";
+    referenceId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }) => CreditOperationResult<CreditHold>;
+  releaseCreditHold: (params: {
+    holdId?: ID;
+    referenceId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }) => CreditOperationResult<CreditTransaction>;
+  captureCreditHold: (params: {
+    holdId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }) => CreditOperationResult<CreditTransaction>;
+  awardCredits: (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system" | "admin";
+    referenceId?: ID;
+    description: string;
+    idempotencyKey: string;
+  }) => CreditOperationResult<CreditTransaction>;
+  refundCredits: (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system" | "admin";
+    referenceId?: ID;
+    description: string;
+    idempotencyKey: string;
+  }) => CreditOperationResult<CreditTransaction>;
+  completeSkillSwap: (swapId: ID, sessionId?: ID) => CreditOperationResult;
+  adminAdjustCredits: (userId: ID, amount: number, description: string) => CreditOperationResult<CreditTransaction>;
+  getCreditAudit: (userId?: ID) => CreditAuditLog;
 
   trackViewedSkill: (skillId: string) => void;
   trackViewedProfile: (userId: string) => void;
@@ -118,6 +185,7 @@ interface SkillSwapContextType {
 }
 
 const STORAGE_KEY = "skillswap_state_v1";
+const CREDITS_STORAGE_KEY = "skillswap_credits_v1";
 
 const defaultConnections: Connection[] = [
   { id: "c1", requesterId: "u2", recipientId: "u1", status: "connected", createdAt: "2026-08-10" },
@@ -221,6 +289,62 @@ function loadSavedState() {
   }
 }
 
+function loadSavedCreditState(): CreditEngineState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(CREDITS_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildInitialCreditState(userList: User[]): CreditEngineState {
+  let state = createEmptyCreditState();
+  const now = "2026-08-01T00:00:00.000Z";
+
+  // Grant initial credits to all seed users
+  for (const user of userList) {
+    const res = grantInitialCredits(state, user.id, buildIdempotencyKey("initial_grant", user.id), now);
+    state = res.state;
+  }
+
+  // Seed history for sr3 (completed swap between u2 and u4):
+  // u2 learned Spanish from u4. u2 pays 2 credits, u4 receives 2 credits.
+  const sr3CompletedByLearnerKey = buildIdempotencyKey("session", "sr3", "learner_capture");
+  const sr3RewardTeacherKey = buildIdempotencyKey("session", "sr3", "teacher_reward");
+
+  const sr3CompleteRes = completeSkillSwapAtomic(
+    state,
+    {
+      swapRequest: defaultSwapRequests.find((sr) => sr.id === "sr3")!,
+      completedByUserId: "u2",
+      amount: CREDIT_RULES.CREDITS_PER_SWAP,
+      nowIso: "2026-08-01T12:00:00.000Z",
+    }
+  );
+  state = sr3CompleteRes.state;
+
+  // Seed hold for sr1 (active swap: u2 requested from u1):
+  // u2 has held 2 credits for sr1
+  const sr1HoldKey = buildIdempotencyKey("swap", "sr1", "hold");
+  const holdRes = engineCreateCreditHold(
+    state,
+    {
+      userId: "u2",
+      amount: CREDIT_RULES.CREDITS_PER_SWAP,
+      referenceType: "swap",
+      referenceId: "sr1",
+      idempotencyKey: sr1HoldKey,
+      description: "Credit hold for active SkillSwap with Mara Chen",
+    },
+    "2026-08-14T10:00:00.000Z"
+  );
+  state = holdRes.state;
+
+  return state;
+}
+
 const Context = createContext<SkillSwapContextType | null>(null);
 
 export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
@@ -240,8 +364,17 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
   const [reviews, setReviews] = useState<Review[]>(() => loadSavedState()?.reviews || initialReviews);
   const [activities, setActivities] = useState<Activity[]>(() => loadSavedState()?.activities || defaultActivities);
 
+  const [creditState, setCreditState] = useState<CreditEngineState>(() => {
+    const saved = loadSavedCreditState();
+    if (saved && Object.keys(saved.accounts || {}).length > 0) {
+      return saved;
+    }
+    return buildInitialCreditState(initialUsers);
+  });
+
   const [recentlyViewedSkills, setRecentlyViewedSkills] = useState<string[]>([]);
   const [recentlyViewedProfiles, setRecentlyViewedProfiles] = useState<string[]>([]);
+
 
   const trackViewedSkill = (skillId: string) => {
     if (!skillId) return;
@@ -268,7 +401,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => [newNotif, ...prev]);
   };
 
-  // Save to localStorage when state changes (skip first mount to preserve initial values)
+  // Save to localStorage when state changes
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -290,6 +423,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
         activities,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      localStorage.setItem(CREDITS_STORAGE_KEY, JSON.stringify(creditState));
     } catch (e) {
       console.error("Failed to save local state", e);
     }
@@ -306,9 +440,159 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
     notifications,
     reviews,
     activities,
+    creditState,
   ]);
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[1];
+
+  /* --- CREDIT ENGINE API IMPLEMENTATION --- */
+
+  const getCreditAccount = (userId: ID = currentUserId): CreditAccount => {
+    const acc = creditState.accounts[userId];
+    if (acc) return acc;
+    return {
+      userId,
+      available: CREDIT_RULES.INITIAL_CREDITS,
+      held: 0,
+      lifetimeEarned: CREDIT_RULES.INITIAL_CREDITS,
+      lifetimeSpent: 0,
+      version: 1,
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
+  const getCreditBalance = (userId: ID = currentUserId): number => {
+    return getCreditAccount(userId).available;
+  };
+
+  const getCreditTransactions = (userId: ID = currentUserId): CreditTransaction[] => {
+    return creditState.transactions.filter((t) => t.userId === userId);
+  };
+
+  const getCreditHolds = (userId: ID = currentUserId): CreditHold[] => {
+    return creditState.holds.filter((h) => h.userId === userId);
+  };
+
+  const canAfford = (userId: ID = currentUserId, amount: number = CREDIT_RULES.CREDITS_PER_SWAP): boolean => {
+    const balance = getCreditBalance(userId);
+    return balance >= amount;
+  };
+
+  const holdCredits = (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system";
+    referenceId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }): CreditOperationResult<CreditHold> => {
+    const res = engineCreateCreditHold(creditState, params);
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const releaseCreditHold = (params: {
+    holdId?: ID;
+    referenceId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }): CreditOperationResult<CreditTransaction> => {
+    const res = engineReleaseCreditHold(creditState, params);
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const captureCreditHold = (params: {
+    holdId?: ID;
+    idempotencyKey: string;
+    description?: string;
+  }): CreditOperationResult<CreditTransaction> => {
+    const res = engineCaptureCreditHold(creditState, params);
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const awardCredits = (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system" | "admin";
+    referenceId?: ID;
+    description: string;
+    idempotencyKey: string;
+  }): CreditOperationResult<CreditTransaction> => {
+    const res = engineAwardCredits(creditState, params);
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const refundCredits = (params: {
+    userId: ID;
+    amount: number;
+    referenceType: "swap" | "session" | "system" | "admin";
+    referenceId?: ID;
+    description: string;
+    idempotencyKey: string;
+  }): CreditOperationResult<CreditTransaction> => {
+    const res = engineRefundCredits(creditState, params);
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const completeSkillSwap = (swapId: ID, _sessionId?: ID): CreditOperationResult => {
+    const targetSwap = swapRequests.find((sr) => sr.id === swapId);
+    if (!targetSwap) {
+      return {
+        success: false,
+        code: "SWAP_NOT_FOUND",
+        message: "Swap request not found",
+      };
+    }
+
+    const res = completeSkillSwapAtomic(creditState, {
+      swapRequest: targetSwap,
+      completedByUserId: currentUserId,
+      amount: CREDIT_RULES.CREDITS_PER_SWAP,
+    });
+
+    if (res.result.success) {
+      setCreditState(res.state);
+      updateSwapStatus(swapId, "completed");
+    }
+
+    return res.result;
+  };
+
+  const adminAdjustCredits = (userId: ID, amount: number, description: string): CreditOperationResult<CreditTransaction> => {
+    const idempotencyKey = buildIdempotencyKey("admin", userId, Date.now().toString());
+    const res = engineAwardCredits(creditState, {
+      userId,
+      amount,
+      referenceType: "admin",
+      description,
+      idempotencyKey,
+      type: "adjustment",
+    });
+    if (res.result.success) {
+      setCreditState(res.state);
+    }
+    return res.result;
+  };
+
+  const getCreditAudit = (userId: ID = currentUserId): CreditAuditLog => {
+    return engineGetCreditAudit(creditState, userId);
+  };
+
+  /* --- EXISTING PRODUCT LOGIC INTEGRATION --- */
 
   const updateProfile: SkillSwapContextType["updateProfile"] = (data) => {
     setUsers((prev) =>
@@ -665,73 +949,102 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
 
   const updateSwapStatus = (requestId: ID, status: SwapStatus) => {
     const now = new Date().toISOString().split("T")[0];
+    const targetReq = swapRequests.find((sr) => sr.id === requestId);
+
+    if (!targetReq) return;
+
+    // Credit Lifecycle side effects on Swap Status changes:
+    if (status === "accepted" || status === "active") {
+      // Create hold for learner (requester) if not already held
+      const holdKey = buildIdempotencyKey("swap", requestId, "hold");
+      const holdRes = engineCreateCreditHold(creditState, {
+        userId: targetReq.requesterId,
+        amount: CREDIT_RULES.CREDITS_PER_SWAP,
+        referenceType: "swap",
+        referenceId: requestId,
+        idempotencyKey: holdKey,
+        description: `Credits held for accepted SkillSwap #${requestId}`,
+      });
+      if (holdRes.result.success) {
+        setCreditState(holdRes.state);
+      }
+    } else if (status === "declined" || status === "cancelled") {
+      // Release hold if it exists
+      const releaseKey = buildIdempotencyKey("swap", requestId, "hold_release");
+      const releaseRes = engineReleaseCreditHold(creditState, {
+        referenceId: requestId,
+        idempotencyKey: releaseKey,
+        description: `Credits released due to swap ${status}`,
+      });
+      if (releaseRes.result.success) {
+        setCreditState(releaseRes.state);
+      }
+    }
+
     setSwapRequests((prev) =>
       prev.map((sr) => (sr.id === requestId ? { ...sr, status, updatedAt: now } : sr))
     );
 
-    const targetReq = swapRequests.find((sr) => sr.id === requestId);
-    if (targetReq) {
-      const otherUserId = targetReq.requesterId === currentUserId ? targetReq.recipientId : targetReq.requesterId;
-      setNotifications((prev) => [
+    const otherUserId = targetReq.requesterId === currentUserId ? targetReq.recipientId : targetReq.requesterId;
+    setNotifications((prev) => [
+      {
+        id: `n_${Date.now()}`,
+        userId: otherUserId,
+        type: "swap_status",
+        title: `SkillSwap request status updated to ${status}`,
+        read: false,
+        createdAt: now,
+      },
+      ...prev,
+    ]);
+
+    if (status === "completed") {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetReq.requesterId || u.id === targetReq.recipientId
+            ? { ...u, completedSwaps: u.completedSwaps + 1 }
+            : u
+        )
+      );
+
+      // Ensure connection exists and is connected
+      setConnections((prev) => {
+        const existing = prev.find(
+          (c) =>
+            (c.requesterId === targetReq.requesterId && c.recipientId === targetReq.recipientId) ||
+            (c.requesterId === targetReq.recipientId && c.recipientId === targetReq.requesterId)
+        );
+        if (existing) {
+          return prev.map((c) => (c.id === existing.id ? { ...c, status: "connected" } : c));
+        }
+        return [
+          ...prev,
+          {
+            id: `c_${Date.now()}`,
+            requesterId: targetReq.requesterId,
+            recipientId: targetReq.recipientId,
+            status: "connected",
+            createdAt: now,
+          },
+        ];
+      });
+
+      const requesterUser = users.find((u) => u.id === targetReq.requesterId);
+      const recipientUser = users.find((u) => u.id === targetReq.recipientId);
+
+      setActivities((prev) => [
         {
-          id: `n_${Date.now()}`,
-          userId: otherUserId,
-          type: "swap_status",
-          title: `SkillSwap request status updated to ${status}`,
-          read: false,
+          id: `act_${Date.now()}`,
+          type: "swap_completed",
+          userId: targetReq.requesterId,
+          targetUserId: targetReq.recipientId,
+          skillId: targetReq.requestedSkillId,
+          title: "Completed SkillSwap",
+          description: `${requesterUser?.name || "Member"} & ${recipientUser?.name || "Member"} completed a SkillSwap.`,
           createdAt: now,
         },
         ...prev,
       ]);
-
-      if (status === "completed") {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === targetReq.requesterId || u.id === targetReq.recipientId
-              ? { ...u, completedSwaps: u.completedSwaps + 1 }
-              : u
-          )
-        );
-
-        // Ensure connection exists and is connected
-        setConnections((prev) => {
-          const existing = prev.find(
-            (c) =>
-              (c.requesterId === targetReq.requesterId && c.recipientId === targetReq.recipientId) ||
-              (c.requesterId === targetReq.recipientId && c.recipientId === targetReq.requesterId)
-          );
-          if (existing) {
-            return prev.map((c) => (c.id === existing.id ? { ...c, status: "connected" } : c));
-          }
-          return [
-            ...prev,
-            {
-              id: `c_${Date.now()}`,
-              requesterId: targetReq.requesterId,
-              recipientId: targetReq.recipientId,
-              status: "connected",
-              createdAt: now,
-            },
-          ];
-        });
-
-        const requesterUser = users.find((u) => u.id === targetReq.requesterId);
-        const recipientUser = users.find((u) => u.id === targetReq.recipientId);
-
-        setActivities((prev) => [
-          {
-            id: `act_${Date.now()}`,
-            type: "swap_completed",
-            userId: targetReq.requesterId,
-            targetUserId: targetReq.recipientId,
-            skillId: targetReq.requestedSkillId,
-            title: "Completed SkillSwap",
-            description: `${requesterUser?.name || "Member"} & ${recipientUser?.name || "Member"} completed a SkillSwap.`,
-            createdAt: now,
-          },
-          ...prev,
-        ]);
-      }
     }
   };
 
@@ -819,6 +1132,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
   const resetState = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(CREDITS_STORAGE_KEY);
     }
     setUsers(initialUsers);
     setProfiles(initialProfiles);
@@ -832,6 +1146,7 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
     setNotifications(initialNotifications);
     setReviews(initialReviews);
     setActivities(defaultActivities);
+    setCreditState(buildInitialCreditState(initialUsers));
   };
 
   return (
@@ -854,6 +1169,19 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
         activities,
         recentlyViewedSkills,
         recentlyViewedProfiles,
+        getCreditAccount,
+        getCreditBalance,
+        getCreditTransactions,
+        getCreditHolds,
+        canAfford,
+        holdCredits,
+        releaseCreditHold,
+        captureCreditHold,
+        awardCredits,
+        refundCredits,
+        completeSkillSwap,
+        adminAdjustCredits,
+        getCreditAudit,
         trackViewedSkill,
         trackViewedProfile,
         addRecommendationNotification,
