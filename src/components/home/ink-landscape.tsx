@@ -22,6 +22,8 @@ interface BirdRenderState {
   depthZ: number;
   angle: number;
   wingFlex: number;
+  glideFactor: number;
+  bankAngle: number;
   opacity: number;
 }
 
@@ -177,21 +179,43 @@ export function InkLandscape() {
         y: currentRotX.current * 0.4,
       });
 
-      // Aesthetic Layer: Birds gliding & soaring in formation
+      // Aesthetic Layer: Birds gliding & soaring in formation with natural thermal floating dynamics
       if (activeMotionMode === "all") {
         const nextBirdsState = INITIAL_BIRDS.map((bird) => {
-          // Graceful sinusoidal flight path
+          // Flight timeline
           const t = time * bird.speed + bird.pathOffset;
-          const oscX = Math.sin(t) * 8 + Math.cos(t * 0.4) * 4;
-          const oscY = Math.cos(t * 0.7) * 4 + Math.sin(t * 0.3) * 3;
 
-          // Slope angle based on trajectory gradient for natural pitching
-          const dx = Math.cos(t) * 8 - Math.sin(t * 0.4) * 1.6;
-          const dy = -Math.sin(t * 0.7) * 2.8 + Math.cos(t * 0.3) * 0.9;
-          const flightAngle = Math.atan2(dy, dx) * (180 / Math.PI) * 0.25;
+          // Thermal breeze drift + graceful wide soaring path
+          const oscX = Math.sin(t * 0.9) * 10 + Math.cos(t * 0.35) * 5;
+          // Thermal updrafts: gentle rising and buoyant floating bobbing
+          const thermalUpdraft = Math.sin(t * 1.4) * 2.5;
+          const oscY = Math.cos(t * 0.6) * 5 + thermalUpdraft;
 
-          // Gentle wing glide/flex oscillation
-          const wingFlex = Math.sin(time * 2.2 + bird.pathOffset * 3);
+          // Trajectory derivative for natural flight vector pitching
+          const dx = Math.cos(t * 0.9) * 9 - Math.sin(t * 0.35) * 1.75;
+          const dy = -Math.sin(t * 0.6) * 3 + Math.cos(t * 1.4) * 3.5;
+          const flightAngle = Math.atan2(dy, dx) * (180 / Math.PI) * 0.22;
+
+          // Banking (roll tilt) proportional to turning curvature (dx acceleration)
+          const bankAngle = Math.sin(t * 0.8) * 12;
+
+          // Natural Flap vs Glide Cycle:
+          // Birds float on thermals in long glides, punctuated by gentle wing strokes
+          const cycle = (time * 1.2 + bird.pathOffset * 2.1) % (Math.PI * 2);
+          const isGlidingPhase = cycle < Math.PI * 1.4;
+
+          let wingFlex = 0;
+          let glideFactor = 1;
+
+          if (isGlidingPhase) {
+            // Smooth soaring glide with slight atmospheric thermal micro-flex
+            glideFactor = 1;
+            wingFlex = Math.sin(time * 0.8 + bird.pathOffset) * 0.12; // subtle hold
+          } else {
+            // Soft active wing stroke cycle during transition
+            glideFactor = 0;
+            wingFlex = Math.sin((cycle - Math.PI * 1.4) * 6.5);
+          }
 
           const parallaxX = currentRotY.current * (bird.depthZ / 35);
           const parallaxY = -currentRotX.current * (bird.depthZ / 35);
@@ -204,7 +228,9 @@ export function InkLandscape() {
             depthZ: bird.depthZ,
             angle: flightAngle,
             wingFlex,
-            opacity: 0.85 + Math.sin(t * 0.5) * 0.15,
+            glideFactor,
+            bankAngle,
+            opacity: 0.88 + Math.sin(t * 0.5) * 0.12,
           };
         });
 
@@ -349,49 +375,58 @@ export function InkLandscape() {
           style={{ transformStyle: "preserve-3d" }}
         >
           {birdsRenderState.map((bird) => {
-            const wingAngle = bird.wingFlex * 18; // degrees flex
+            // Wing flex angle in degrees (flapping vs thermal glide dihedral arc)
+            const baseFlapAngle = bird.glideFactor === 1 ? -4 : 0; // Gentle dihedral uplift during glide
+            const wingAngle = baseFlapAngle + bird.wingFlex * (bird.glideFactor === 1 ? 6 : 22);
+
             return (
               <div
                 key={bird.id}
-                className="absolute transition-transform duration-150 ease-out"
+                className="absolute transition-transform duration-100 ease-out"
                 style={{
                   left: `${bird.posX}%`,
                   top: `${bird.posY}%`,
-                  transform: `translateZ(${bird.depthZ}px) scale(${bird.scale}) rotate(${bird.angle}deg)`,
+                  transform: `translateZ(${bird.depthZ}px) scale(${bird.scale}) rotate(${bird.angle}deg) rotateX(${bird.bankAngle * 0.4}deg)`,
                   opacity: bird.opacity,
                 }}
               >
-                {/* Elegant Sumi-e Bird silhouette */}
+                {/* Refined Japanese Sumi-e Calligraphic Bird Silhouette */}
                 <svg
-                  width="26"
-                  height="14"
-                  viewBox="0 0 32 18"
+                  width="30"
+                  height="16"
+                  viewBox="0 0 36 20"
                   fill="none"
-                  className="filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.18)]"
+                  className="filter drop-shadow-[0_2px_5px_rgba(0,0,0,0.22)]"
                 >
-                  {/* Left Wing - smooth curved stroke */}
+                  {/* Left Wing - Elegant Sweeping Ink Brush Stroke */}
                   <path
-                    d="M 16 10 C 11 6, 5 3, 1 7 C 6 10, 12 11, 16 10 Z"
+                    d="M 18 11 C 12 6, 5 3, 1 8 C 7 11, 13 12, 18 11 Z"
                     fill="#1C1917"
                     style={{
                       transform: `rotate(${-wingAngle}deg)`,
-                      transformOrigin: "16px 10px",
-                      transition: "transform 0.15s ease-out",
+                      transformOrigin: "18px 11px",
+                      transition: "transform 0.12s ease-out",
                     }}
                   />
-                  {/* Right Wing - smooth curved stroke */}
+                  {/* Right Wing - Elegant Sweeping Ink Brush Stroke */}
                   <path
-                    d="M 16 10 C 21 6, 27 3, 31 7 C 26 10, 20 11, 16 10 Z"
+                    d="M 18 11 C 24 6, 31 3, 35 8 C 29 11, 23 12, 18 11 Z"
                     fill="#1C1917"
                     style={{
                       transform: `rotate(${wingAngle}deg)`,
-                      transformOrigin: "16px 10px",
-                      transition: "transform 0.15s ease-out",
+                      transformOrigin: "18px 11px",
+                      transition: "transform 0.12s ease-out",
                     }}
                   />
-                  {/* Graceful Sumi Body stroke */}
+                  {/* Tail Fan - Delicate Sumi stroke extension */}
                   <path
-                    d="M 13 10 C 15 9, 17 9, 19 10 C 18 12, 14 12, 13 10 Z"
+                    d="M 18 11 L 16 17 C 18 18, 18 18, 20 17 Z"
+                    fill="#27272A"
+                    opacity="0.85"
+                  />
+                  {/* Central Body & Head - Fluid Sumi Calligraphy Dot */}
+                  <path
+                    d="M 14 11 C 16 9.5, 20 9.5, 22 11 C 20 13, 16 13, 14 11 Z"
                     fill="#09090B"
                   />
                 </svg>
