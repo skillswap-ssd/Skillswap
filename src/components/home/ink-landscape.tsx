@@ -10,7 +10,6 @@ interface Bird {
   baseY: number; // base percentage position (0-100)
   scale: number;
   speed: number;
-  wingSpeed: number;
   depthZ: number;
   pathOffset: number;
 }
@@ -21,7 +20,9 @@ interface BirdRenderState {
   posY: number;
   scale: number;
   depthZ: number;
-  wingSpeed: number;
+  angle: number;
+  wingFlex: number;
+  opacity: number;
 }
 
 interface Petal {
@@ -36,23 +37,24 @@ interface Petal {
   color: string;
   opacity: number;
   depthZ: number;
+  wobbleOffset: number;
 }
 
 const INITIAL_BIRDS: Bird[] = [
-  { id: 1, baseX: 42, baseY: 32, scale: 0.95, speed: 0.8, wingSpeed: 1.2, depthZ: 52, pathOffset: 0 },
-  { id: 2, baseX: 48, baseY: 28, scale: 0.75, speed: 0.9, wingSpeed: 1.4, depthZ: 44, pathOffset: 1.2 },
-  { id: 3, baseX: 55, baseY: 23, scale: 1.15, speed: 0.7, wingSpeed: 1.0, depthZ: 60, pathOffset: 2.5 },
-  { id: 4, baseX: 62, baseY: 19, scale: 0.65, speed: 1.1, wingSpeed: 1.6, depthZ: 38, pathOffset: 3.8 },
-  { id: 5, baseX: 35, baseY: 37, scale: 0.85, speed: 0.85, wingSpeed: 1.3, depthZ: 48, pathOffset: 4.9 },
+  { id: 1, baseX: 38, baseY: 26, scale: 0.85, speed: 0.35, depthZ: 55, pathOffset: 0 },
+  { id: 2, baseX: 44, baseY: 22, scale: 0.65, speed: 0.38, depthZ: 42, pathOffset: 0.8 },
+  { id: 3, baseX: 52, baseY: 18, scale: 1.05, speed: 0.32, depthZ: 65, pathOffset: 1.7 },
+  { id: 4, baseX: 59, baseY: 15, scale: 0.55, speed: 0.42, depthZ: 35, pathOffset: 2.6 },
+  { id: 5, baseX: 31, baseY: 30, scale: 0.75, speed: 0.36, depthZ: 48, pathOffset: 3.4 },
 ];
 
 const INITIAL_PETALS: Petal[] = [
-  { id: 1, x: 80, y: 15, size: 7, rotation: 12, speedX: -0.12, speedY: 0.15, rotSpeed: 1.5, color: "#A52A20", opacity: 0.85, depthZ: 68 },
-  { id: 2, x: 75, y: 25, size: 5, rotation: 45, speedX: -0.18, speedY: 0.22, rotSpeed: 2.2, color: "#171717", opacity: 0.75, depthZ: 58 },
-  { id: 3, x: 88, y: 10, size: 8, rotation: -20, speedX: -0.09, speedY: 0.12, rotSpeed: 1.1, color: "#A52A20", opacity: 0.9, depthZ: 75 },
-  { id: 4, x: 70, y: 35, size: 6, rotation: 80, speedX: -0.15, speedY: 0.18, rotSpeed: 2.8, color: "#2E2B26", opacity: 0.8, depthZ: 62 },
-  { id: 5, x: 65, y: 45, size: 4, rotation: 110, speedX: -0.22, speedY: 0.25, rotSpeed: 3.5, color: "#A52A20", opacity: 0.7, depthZ: 50 },
-  { id: 6, x: 82, y: 30, size: 6.5, rotation: 30, speedX: -0.14, speedY: 0.16, rotSpeed: 1.8, color: "#171717", opacity: 0.82, depthZ: 65 },
+  { id: 1, x: 78, y: 18, size: 6, rotation: 15, speedX: -0.06, speedY: 0.08, rotSpeed: 0.6, color: "rgba(153, 27, 27, 0.65)", opacity: 0.7, depthZ: 68, wobbleOffset: 0 },
+  { id: 2, x: 72, y: 28, size: 4.5, rotation: 40, speedX: -0.08, speedY: 0.11, rotSpeed: 0.9, color: "rgba(39, 39, 42, 0.55)", opacity: 0.6, depthZ: 55, wobbleOffset: 1.2 },
+  { id: 3, x: 86, y: 12, size: 7, rotation: -10, speedX: -0.05, speedY: 0.07, rotSpeed: 0.5, color: "rgba(153, 27, 27, 0.75)", opacity: 0.75, depthZ: 75, wobbleOffset: 2.4 },
+  { id: 4, x: 68, y: 38, size: 5, rotation: 65, speedX: -0.07, speedY: 0.09, rotSpeed: 0.8, color: "rgba(39, 39, 42, 0.5)", opacity: 0.55, depthZ: 60, wobbleOffset: 3.6 },
+  { id: 5, x: 63, y: 48, size: 4, rotation: 90, speedX: -0.09, speedY: 0.12, rotSpeed: 1.1, color: "rgba(153, 27, 27, 0.55)", opacity: 0.5, depthZ: 48, wobbleOffset: 4.8 },
+  { id: 6, x: 81, y: 32, size: 5.5, rotation: 25, speedX: -0.06, speedY: 0.08, rotSpeed: 0.7, color: "rgba(24, 24, 27, 0.6)", opacity: 0.65, depthZ: 64, wobbleOffset: 5.5 },
 ];
 
 export function InkLandscape() {
@@ -175,63 +177,62 @@ export function InkLandscape() {
         y: currentRotX.current * 0.4,
       });
 
-      // Update Motion 3: Birds positions
+      // Aesthetic Layer: Birds gliding & soaring in formation
       if (activeMotionMode === "all") {
         const nextBirdsState = INITIAL_BIRDS.map((bird) => {
-          const oscX = Math.sin(time * bird.speed + bird.pathOffset) * 18;
-          const oscY = Math.cos(time * bird.speed * 0.8 + bird.pathOffset) * 8;
+          // Graceful sinusoidal flight path
+          const t = time * bird.speed + bird.pathOffset;
+          const oscX = Math.sin(t) * 8 + Math.cos(t * 0.4) * 4;
+          const oscY = Math.cos(t * 0.7) * 4 + Math.sin(t * 0.3) * 3;
 
-          const parallaxX = currentRotY.current * (bird.depthZ / 30);
-          const parallaxY = -currentRotX.current * (bird.depthZ / 30);
+          // Slope angle based on trajectory gradient for natural pitching
+          const dx = Math.cos(t) * 8 - Math.sin(t * 0.4) * 1.6;
+          const dy = -Math.sin(t * 0.7) * 2.8 + Math.cos(t * 0.3) * 0.9;
+          const flightAngle = Math.atan2(dy, dx) * (180 / Math.PI) * 0.25;
+
+          // Gentle wing glide/flex oscillation
+          const wingFlex = Math.sin(time * 2.2 + bird.pathOffset * 3);
+
+          const parallaxX = currentRotY.current * (bird.depthZ / 35);
+          const parallaxY = -currentRotX.current * (bird.depthZ / 35);
 
           return {
             id: bird.id,
-            posX: bird.baseX + (oscX / 10) + (parallaxX / 5),
-            posY: bird.baseY + (oscY / 10) + (parallaxY / 5),
+            posX: bird.baseX + (oscX / 10) + (parallaxX / 6),
+            posY: bird.baseY + (oscY / 10) + (parallaxY / 6),
             scale: bird.scale,
             depthZ: bird.depthZ,
-            wingSpeed: bird.wingSpeed,
+            angle: flightAngle,
+            wingFlex,
+            opacity: 0.85 + Math.sin(t * 0.5) * 0.15,
           };
         });
 
         setBirdsRenderState(nextBirdsState);
 
-        // Update Motion 3: Drifting Petals physics with wind vector & hover disturbance
-        const windX = -0.08 + (isHovered ? -pos.x * 0.12 : 0);
-        const windY = 0.14 + (isHovered ? pos.y * 0.08 : 0);
+        // Aesthetic Layer: Gentle drifting ink petals with organic micro-oscillations
+        const windX = -0.04 + (isHovered ? -pos.x * 0.05 : 0);
+        const windY = 0.06 + (isHovered ? pos.y * 0.04 : 0);
 
         petalsRef.current = petalsRef.current.map((p) => {
-          let newX = p.x + (p.speedX + windX) * 0.6;
-          let newY = p.y + (p.speedY + windY) * 0.6;
-          let newRot = p.rotation + p.rotSpeed * 0.8;
+          const wobble = Math.sin(time * 1.2 + p.wobbleOffset) * 0.08;
+          let newX = p.x + (p.speedX + windX + wobble) * 0.4;
+          let newY = p.y + (p.speedY + windY) * 0.4;
+          let newRot = p.rotation + p.rotSpeed * 0.4;
 
           if (newX < -5) newX = 95;
           if (newX > 105) newX = 5;
-          if (newY > 95) {
-            newY = 5 + Math.random() * 15;
-            newX = 70 + Math.random() * 25; // respawn near pine tree
+          if (newY > 90) {
+            newY = 5 + Math.random() * 10;
+            newX = 70 + Math.random() * 20; // gentle respawn near tree line
           }
-
-          const parallaxX = currentRotY.current * (p.depthZ / 25);
-          const parallaxY = -currentRotX.current * (p.depthZ / 25);
 
           return {
             ...p,
             x: newX,
             y: newY,
             rotation: newRot,
-            speedX: p.speedX,
-            speedY: p.speedY,
-            // computed display coordinates offset by parallax
-            depthZ: p.depthZ,
-            opacity: p.opacity,
-            size: p.size,
-            color: p.color,
-            rotSpeed: p.rotSpeed,
-            // Save temporary spatial coordinates in state pass
-            xWithParallax: newX + (parallaxX / 10),
-            yWithParallax: newY + (parallaxY / 10),
-          } as Petal;
+          };
         });
 
         setPetalRenderState([...petalsRef.current]);
@@ -249,45 +250,29 @@ export function InkLandscape() {
 
   return (
     <div className="relative w-full max-w-[660px] mx-auto py-6 px-3 select-none">
-      {/* Inline styles for wing-flapping, solar pulse & water shimmer */}
+      {/* Inline styles for solar pulse & water shimmer */}
       <style>{`
-        @keyframes wingFlapLeft {
-          0%, 100% { transform: rotate(0deg) scaleY(1); }
-          50% { transform: rotate(-28deg) scaleY(0.7); }
-        }
-        @keyframes wingFlapRight {
-          0%, 100% { transform: rotate(0deg) scaleY(1); }
-          50% { transform: rotate(28deg) scaleY(0.7); }
-        }
         @keyframes sunAuraPulse {
           0%, 100% { transform: scale(1); opacity: 0.35; }
-          50% { transform: scale(1.18); opacity: 0.65; }
+          50% { transform: scale(1.15); opacity: 0.55; }
         }
         @keyframes waterShimmer {
           0% { transform: translateX(-10px); opacity: 0.3; }
-          50% { transform: translateX(12px); opacity: 0.7; }
+          50% { transform: translateX(12px); opacity: 0.6; }
           100% { transform: translateX(-10px); opacity: 0.3; }
         }
         @keyframes treeSway {
           0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(1.2deg); }
-        }
-        .animate-wing-left {
-          animation: wingFlapLeft 0.5s ease-in-out infinite;
-          transform-origin: right center;
-        }
-        .animate-wing-right {
-          animation: wingFlapRight 0.5s ease-in-out infinite;
-          transform-origin: left center;
+          50% { transform: rotate(0.8deg); }
         }
         .animate-sun-aura {
-          animation: sunAuraPulse 4s ease-in-out infinite;
+          animation: sunAuraPulse 5s ease-in-out infinite;
         }
         .animate-water-shimmer {
-          animation: waterShimmer 6s ease-in-out infinite;
+          animation: waterShimmer 7s ease-in-out infinite;
         }
         .animate-tree-sway {
-          animation: treeSway 7s ease-in-out infinite;
+          animation: treeSway 9s ease-in-out infinite;
           transform-origin: bottom right;
         }
       `}</style>
@@ -358,51 +343,64 @@ export function InkLandscape() {
           }}
         />
 
-        {/* MOTION 3 (THE GREAT 3RD MOTION): Soaring Sumi-e Ink Birds Flock */}
+        {/* Aesthetic Soaring Sumi-e Ink Birds Flock */}
         <div
           className="absolute inset-0 pointer-events-none overflow-hidden"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {birdsRenderState.map((bird) => (
-            <div
-              key={bird.id}
-              className="absolute transition-transform duration-75 ease-out"
-              style={{
-                left: `${bird.posX}%`,
-                top: `${bird.posY}%`,
-                transform: `translateZ(${bird.depthZ}px) scale(${bird.scale})`,
-              }}
-            >
-              {/* SVG Bird with animated flapping wings */}
-              <svg
-                width="28"
-                height="16"
-                viewBox="0 0 32 18"
-                fill="none"
-                className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
+          {birdsRenderState.map((bird) => {
+            const wingAngle = bird.wingFlex * 18; // degrees flex
+            return (
+              <div
+                key={bird.id}
+                className="absolute transition-transform duration-150 ease-out"
+                style={{
+                  left: `${bird.posX}%`,
+                  top: `${bird.posY}%`,
+                  transform: `translateZ(${bird.depthZ}px) scale(${bird.scale}) rotate(${bird.angle}deg)`,
+                  opacity: bird.opacity,
+                }}
               >
-                {/* Left Wing */}
-                <path
-                  d="M 16 9 Q 8 2 1 7 Q 7 11 16 9 Z"
-                  fill="#171717"
-                  className="animate-wing-left"
-                  style={{ animationDuration: `${0.45 / bird.wingSpeed}s` }}
-                />
-                {/* Right Wing */}
-                <path
-                  d="M 16 9 Q 24 2 31 7 Q 25 11 16 9 Z"
-                  fill="#171717"
-                  className="animate-wing-right"
-                  style={{ animationDuration: `${0.45 / bird.wingSpeed}s` }}
-                />
-                {/* Body Center */}
-                <ellipse cx="16" cy="9.5" rx="2.5" ry="1.2" fill="#0D0D0D" />
-              </svg>
-            </div>
-          ))}
+                {/* Elegant Sumi-e Bird silhouette */}
+                <svg
+                  width="26"
+                  height="14"
+                  viewBox="0 0 32 18"
+                  fill="none"
+                  className="filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.18)]"
+                >
+                  {/* Left Wing - smooth curved stroke */}
+                  <path
+                    d="M 16 10 C 11 6, 5 3, 1 7 C 6 10, 12 11, 16 10 Z"
+                    fill="#1C1917"
+                    style={{
+                      transform: `rotate(${-wingAngle}deg)`,
+                      transformOrigin: "16px 10px",
+                      transition: "transform 0.15s ease-out",
+                    }}
+                  />
+                  {/* Right Wing - smooth curved stroke */}
+                  <path
+                    d="M 16 10 C 21 6, 27 3, 31 7 C 26 10, 20 11, 16 10 Z"
+                    fill="#1C1917"
+                    style={{
+                      transform: `rotate(${wingAngle}deg)`,
+                      transformOrigin: "16px 10px",
+                      transition: "transform 0.15s ease-out",
+                    }}
+                  />
+                  {/* Graceful Sumi Body stroke */}
+                  <path
+                    d="M 13 10 C 15 9, 17 9, 19 10 C 18 12, 14 12, 13 10 Z"
+                    fill="#09090B"
+                  />
+                </svg>
+              </div>
+            );
+          })}
         </div>
 
-        {/* MOTION 3 (THE GREAT 3RD MOTION): Drifting Vermilion & Charcoal Sumi Petals */}
+        {/* Aesthetic Drifting Vermilion & Ink Petals / Mist */}
         <div
           className="absolute inset-0 pointer-events-none overflow-hidden"
           style={{ transformStyle: "preserve-3d" }}
@@ -410,7 +408,7 @@ export function InkLandscape() {
           {petalRenderState.map((petal) => (
             <div
               key={petal.id}
-              className="absolute transition-transform duration-100 ease-out"
+              className="absolute transition-transform duration-300 ease-out"
               style={{
                 left: `${petal.x}%`,
                 top: `${petal.y}%`,
@@ -418,21 +416,17 @@ export function InkLandscape() {
                 opacity: petal.opacity,
               }}
             >
-              {/* Sumi-e Leaf / Petal organic shape */}
+              {/* Soft organic Sumi-e Leaf / Petal */}
               <svg
                 width={petal.size * 2}
-                height={petal.size * 2.5}
+                height={petal.size * 2.2}
                 viewBox="0 0 16 20"
                 fill="none"
+                className="filter blur-[0.2px]"
               >
                 <path
-                  d="M 8 0 C 14 6, 15 14, 8 20 C 1 14, 2 6, 8 0 Z"
+                  d="M 8 0 C 14 5, 15 14, 8 20 C 1 14, 2 5, 8 0 Z"
                   fill={petal.color}
-                />
-                <path
-                  d="M 8 2 L 8 18"
-                  stroke="rgba(255,255,255,0.3)"
-                  strokeWidth="0.8"
                 />
               </svg>
             </div>
@@ -479,23 +473,8 @@ export function InkLandscape() {
           }}
           title="Click to toggle motion density"
         >
-          <span>{activeMotionMode === "all" ? "✨ Motion 3 Active" : "🍃 Subtle Motion"}</span>
+          <span>{activeMotionMode === "all" ? "✨ Dynamic Depth" : "🍃 Subtle Motion"}</span>
         </button>
-
-        {/* Interactive Floating Motion Guide Hint */}
-        <div
-          className={`absolute bottom-4 left-4 right-4 sm:right-auto pointer-events-none transition-all duration-500 text-[11px] font-medium tracking-wide text-zinc-800 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-zinc-200/80 shadow-md ${
-            isHovered ? "opacity-100 translate-y-0" : "opacity-90 translate-y-0 sm:opacity-0 sm:translate-y-2"
-          }`}
-          style={{
-            transform: "translateZ(48px)",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-amber-700 font-bold">Great 3rd Motion:</span>
-            <span>Birds soaring & sumi petals drifting in wind 🍃</span>
-          </div>
-        </div>
       </div>
     </div>
   );
