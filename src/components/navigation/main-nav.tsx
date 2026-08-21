@@ -17,7 +17,8 @@ const links = [
 
 export function MainNav() {
   const pathname = usePathname();
-  const { notifications, currentUser } = useSkillSwap();
+  const { notifications, currentUser, currentUserId, getCreditBalance } = useSkillSwap();
+  const availableCredits = getCreditBalance(currentUserId);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -47,6 +48,15 @@ export function MainNav() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href="/credits"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition shadow-xs"
+            title="View Credit Economy & Transactions"
+          >
+            <span>🪙</span>
+            <span>{availableCredits} Credits</span>
+          </Link>
+
           <Link
             href="/practice"
             className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)]/70 px-3 py-1 text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition"

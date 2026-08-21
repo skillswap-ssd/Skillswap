@@ -34,6 +34,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     getOrCreateConversation,
     createSwapRequest,
     trackViewedProfile,
+    getCreditAccount,
   } = useSkillSwap();
 
   const { sessions, feedbacks } = usePractice();
@@ -61,6 +62,7 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
     .filter((s): s is typeof skills[0] => Boolean(s));
 
   const userReviews = reviews.filter((r) => r.recipientId === user?.id);
+  const creditAccount = getCreditAccount(user?.id);
 
   const existingConn = connections.find(
     (c) =>
@@ -199,6 +201,30 @@ export default function ProfilePage({ params }: { params: Promise<{ username: st
           <p className="capitalize">
             <b>{profile.preference}</b> Format Preference
           </p>
+
+          <div className="mt-4 pt-3 border-t border-[var(--border)]">
+            <span className="font-bold text-xs uppercase tracking-wider text-[var(--muted)] block mb-1">
+              Credit Economy Ledger
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-[var(--surface-muted)] border border-[var(--border)] rounded-sm">
+                <span className="text-[var(--muted)] block">Available</span>
+                <span className="font-bold text-base text-[var(--foreground)]">🪙 {creditAccount.available}</span>
+              </div>
+              <div className="p-2 bg-[var(--surface-muted)] border border-[var(--border)] rounded-sm">
+                <span className="text-[var(--muted)] block">Held / Reserved</span>
+                <span className="font-bold text-base text-[var(--foreground)]">🪙 {creditAccount.held}</span>
+              </div>
+              <div className="p-2 bg-[var(--surface-muted)] border border-[var(--border)] rounded-sm">
+                <span className="text-[var(--muted)] block">Lifetime Earned</span>
+                <span className="font-bold text-sm text-[var(--foreground)]">+{creditAccount.lifetimeEarned}</span>
+              </div>
+              <div className="p-2 bg-[var(--surface-muted)] border border-[var(--border)] rounded-sm">
+                <span className="text-[var(--muted)] block">Lifetime Spent</span>
+                <span className="font-bold text-sm text-[var(--foreground)]">-{creditAccount.lifetimeSpent}</span>
+              </div>
+            </div>
+          </div>
 
           {user.interests.length > 0 && (
             <div className="mt-4 pt-2 border-t border-[var(--border)] flex flex-wrap gap-1.5">
