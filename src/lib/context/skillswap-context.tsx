@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
 import {
   categories as initialCategories,
   currentUserId,
@@ -735,15 +735,19 @@ export function SkillSwapProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const markConversationAsRead = (conversationId: ID) => {
-    setConversations((prev) =>
-      prev.map((c) =>
+  const markConversationAsRead = useCallback((conversationId: ID) => {
+    setConversations((prev) => {
+      const target = prev.find((c) => c.id === conversationId);
+      if (!target || (target.unreadCount[currentUserId] || 0) === 0) {
+        return prev;
+      }
+      return prev.map((c) =>
         c.id === conversationId
           ? { ...c, unreadCount: { ...c.unreadCount, [currentUserId]: 0 } }
           : c
-      )
-    );
-  };
+      );
+    });
+  }, []);
 
   const addReview = (data: { recipientId: ID; swapRequestId?: ID; skillId?: ID; rating: number; body: string }) => {
     if (data.swapRequestId && reviews.some((r) => r.swapRequestId === data.swapRequestId && r.authorId === currentUserId)) {
