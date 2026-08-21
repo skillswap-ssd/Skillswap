@@ -11,24 +11,27 @@ const links = [
   ["Matches", "/matches"],
   ["Connections", "/connections"],
   ["Messages", "/messages"],
-  ["Practice", "/practice"],
-  ["Skills", "/skills"],
 ];
 
 export function MainNav() {
   const pathname = usePathname();
-  const { notifications, currentUser, currentUserId, getCreditBalance } = useSkillSwap();
-  const availableCredits = getCreditBalance(currentUserId);
+  const { notifications, currentUser } = useSkillSwap();
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border)]/60 bg-[var(--background)]/95 backdrop-blur-sm transition-colors">
+    <header className="sticky top-0 z-30 bg-[var(--background)]/95 backdrop-blur-sm transition-colors">
       <nav className="container flex min-h-16 items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-display text-2xl font-bold tracking-tight text-[var(--foreground)] shrink-0">
-          Skill<span className="text-[var(--primary)]">Swap</span>
-        </Link>
+        <div className="flex flex-col items-start shrink-0">
+          <Link href="/" className="font-display text-2xl font-bold tracking-tight text-[var(--foreground)]">
+            Skill<span className="text-[var(--primary)]">Swap</span>
+          </Link>
+          <div className="w-5 h-5 border-[1.5px] border-[var(--primary)] text-[var(--primary)] rounded-xs flex flex-col justify-between p-0.5 text-[7px] font-extrabold leading-none select-none mt-0.5">
+            <div className="flex justify-between"><span>技</span><span>能</span></div>
+            <div className="flex justify-between"><span>交</span><span>换</span></div>
+          </div>
+        </div>
 
-        <div className="hidden items-center gap-7 md:flex text-sm font-medium text-[var(--secondary)]">
+        <div className="hidden items-center gap-8 md:flex text-sm font-medium text-[var(--secondary)]">
           {links.map(([l, h]) => {
             const isActive = pathname === h || (h !== "/" && pathname.startsWith(h));
             return (
@@ -37,7 +40,7 @@ export function MainNav() {
                 href={h}
                 className={`relative py-1 transition-colors hover:text-[var(--foreground)] ${
                   isActive
-                    ? "text-[var(--foreground)] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--primary)]"
+                    ? "text-[var(--foreground)] font-semibold after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--primary)]"
                     : "text-[var(--secondary)]"
                 }`}
               >
@@ -48,22 +51,6 @@ export function MainNav() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href="/credits"
-            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition shadow-xs"
-            title="View Credit Economy & Transactions"
-          >
-            <span>🪙</span>
-            <span>{availableCredits} Credits</span>
-          </Link>
-
-          <Link
-            href="/practice"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-muted)]/70 px-3 py-1 text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition"
-          >
-            <Sparkles size={13} className="text-[var(--primary)]" /> Practice
-          </Link>
-
           <Link
             aria-label="Notifications"
             href="/notifications"
@@ -78,9 +65,16 @@ export function MainNav() {
           <Link
             aria-label="Profile"
             href={`/profile/${currentUser?.username || "ezra"}`}
-            className="p-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)] transition"
+            className="flex items-center gap-1 p-0.5 rounded-full text-[var(--foreground)] hover:opacity-80 transition"
           >
-            <UserRound size={18} />
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-300 border border-[var(--border)] flex items-center justify-center">
+              {currentUser?.avatar ? (
+                <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
+              ) : (
+                <UserRound size={18} />
+              )}
+            </div>
+            <span className="text-xs text-[var(--muted)]">▾</span>
           </Link>
         </div>
       </nav>

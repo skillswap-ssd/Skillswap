@@ -43,6 +43,13 @@
   }
 }
 
+#nextjs-dev-tools,
+[data-nextjs-toast],
+nextjs-portal,
+.nextjs-toast-errors-parent {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
