@@ -73,37 +73,35 @@ export default function Home() {
   return (
     <div className="page space-y-16">
       {/* Editorial Hero Section */}
-      <section className="container pt-4 pb-8 md:py-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center">
-          {/* Left Text Column */}
-          <div className="md:col-span-6 lg:col-span-5 space-y-5 text-left z-10">
-            <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-[var(--primary)]">
-              PERSONAL DISCOVERY HUB
-            </p>
+      <section className="relative container pt-4 pb-12 md:pt-8 md:pb-16 overflow-visible">
+        {/* Left Text Content Layer */}
+        <div className="relative z-10 max-w-xl space-y-5 text-left">
+          <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-[var(--primary)]">
+            PERSONAL DISCOVERY HUB
+          </p>
 
-            <h1 className="font-display text-5xl leading-[0.92] sm:text-6xl md:text-7xl text-[var(--foreground)] tracking-tight">
-              Welcome back,<br />
-              <span className="text-[var(--primary)]">{currentUser.name.split(" ")[0]}.</span>
-            </h1>
+          <h1 className="font-display text-5xl leading-[0.92] sm:text-6xl md:text-7xl text-[var(--foreground)] tracking-tight">
+            Welcome back,<br />
+            <span className="text-[var(--primary)]">{currentUser.name.split(" ")[0]}.</span>
+          </h1>
 
-            <p className="lede max-w-md text-base sm:text-lg text-[var(--secondary)] leading-relaxed">
-              SkillSwap understands your skills, learning goals, and schedule to surface people and opportunities most useful to you.
-            </p>
+          <p className="lede max-w-md text-base sm:text-lg text-[var(--secondary)] leading-relaxed">
+            SkillSwap understands your skills, learning goals, and schedule to surface people and opportunities most useful to you.
+          </p>
 
-            <div className="pt-2 flex flex-wrap items-center gap-4">
-              <Button href="/discover" className="min-w-[140px]">
-                Find a swap
-              </Button>
-              <Button variant="secondary" href="/skills/new" className="min-w-[140px]">
-                Add a skill
-              </Button>
-            </div>
+          <div className="pt-2 flex flex-wrap items-center gap-4">
+            <Button href="/discover" className="min-w-[140px]">
+              Find a swap
+            </Button>
+            <Button variant="secondary" href="/skills/new" className="min-w-[140px]">
+              Add a skill
+            </Button>
           </div>
+        </div>
 
-          {/* Right Editorial Scene (Integrates directly without card container) */}
-          <div className="md:col-span-6 lg:col-span-7 w-full flex justify-center items-center">
-            <InkLandscape />
-          </div>
+        {/* Right Integrated Landscape Artwork Background Layer */}
+        <div className="absolute top-0 right-0 h-full w-full md:w-[62%] lg:w-[60%] flex items-center justify-end pointer-events-none z-0">
+          <InkLandscape />
         </div>
       </section>
 
