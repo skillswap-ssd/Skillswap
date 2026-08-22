@@ -1,7 +1,15 @@
 export type ID = string;
 export type SkillLevel = "beginner" | "intermediate" | "advanced" | "expert";
 export type ExchangeFormat = "remote" | "in-person" | "hybrid";
-export type SwapStatus = "pending" | "accepted" | "active" | "completed" | "declined" | "cancelled";
+export type SwapStatus =
+  | "pending"
+  | "accepted"
+  | "active"
+  | "waiting_for_completion"
+  | "completed"
+  | "declined"
+  | "cancelled";
+
 export type ConnectionStatus = "pending" | "connected";
 
 export type SkillCategory = { id: ID; name: string; tone: "craft" | "tech" | "voice" | "motion" | "business"; description: string };
@@ -21,7 +29,11 @@ export type SkillSwapRequest = {
   message: string;
   preferredFormat: ExchangeFormat;
   sessionStyle?: string;
+  requiredCredits?: number;
   status: SwapStatus;
+  requesterConfirmedAt?: string;
+  recipientConfirmedAt?: string;
+  settlementId?: ID;
   createdAt: string;
   updatedAt: string;
 };

@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { SwapStatus } from "@/data/models";
+import type { SkillSwapRequest, SwapStatus } from "@/data/models";
 import { useSkillSwap } from "@/lib/context/skillswap-context";
 import {
   Check,
   CheckCircle,
+  Clock,
   MessageSquare,
   Star,
   UserCheck,
@@ -29,13 +30,14 @@ export default function ConnectionsPage() {
     connections,
     swapRequests,
     updateSwapStatus,
+    confirmSwapCompletion,
     updateConnectionStatus,
     getOrCreateConversation,
     addReview,
     reviews,
   } = useSkillSwap();
 
-  const [reviewModalRequest, setReviewModalRequest] = useState<any | null>(null);
+  const [reviewModalRequest, setReviewModalRequest] = useState<SkillSwapRequest | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewBody, setReviewBody] = useState("");
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -81,22 +83,39 @@ export default function ConnectionsPage() {
     }, 1200);
   };
 
-  const statusBadge = (status: SwapStatus) => {
-    switch (status) {
+  const statusBadge = (sr: SkillSwapRequest) => {
+    const isRequester = sr.requesterId === currentUserId;
+    const myConfirmed = isRequester ? Boolean(sr.requesterConfirmedAt) : Boolean(sr.recipientConfirmedAt);
+
+    switch (sr.status) {
       case "pending":
         return <Badge>Pending Response</Badge>;
       case "accepted":
         return <Badge>Accepted</Badge>;
       case "active":
         return <Badge>Active Session</Badge>;
+      case "waiting_for_completion":
+        return myConfirmed ? (
+          <span className="inline-flex border border-amber-300 bg-amber-100 text-amber-800 px-2.5 py-1 text-xs font-bold uppercase tracking-[.12em]">
+            Waiting for Partner Confirmation
+          </span>
+        ) : (
+          <span className="inline-flex border border-emerald-300 bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-bold uppercase tracking-[.12em]">
+            Action Required: Confirm Completion
+          </span>
+        );
       case "completed":
-        return <Badge>Completed</Badge>;
+        return (
+          <span className="inline-flex border border-emerald-800 bg-emerald-800 text-white px-2.5 py-1 text-xs font-bold uppercase tracking-[.12em]">
+            Completed
+          </span>
+        );
       case "declined":
         return <Badge>Declined</Badge>;
       case "cancelled":
         return <Badge>Cancelled</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge>{sr.status}</Badge>;
     }
   };
 
@@ -134,7 +153,7 @@ export default function ConnectionsPage() {
       {tab === "swaps" && (
         <div className="grid gap-6">
           <div className="flex flex-wrap gap-2 text-sm">
-            {["all", "pending", "accepted", "active", "completed"].map((st) => (
+            {["all", "pending", "accepted", "active", "waiting_for_completion", "completed"].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
@@ -144,7 +163,7 @@ export default function ConnectionsPage() {
                     : "border-[var(--border)] hover:bg-[var(--surface-muted)]"
                 }`}
               >
-                {st}
+                {st.replace(/_/g, " ")}
               </button>
             ))}
           </div>
@@ -179,6 +198,8 @@ export default function ConnectionsPage() {
               const offeredSkill = skills.find((s) => s.id === sr.offeredSkillId);
               const requestedSkill = skills.find((s) => s.id === sr.requestedSkillId);
 
+              const myConfirmed = isRequester ? Boolean(sr.requesterConfirmedAt) : Boolean(sr.recipientConfirmedAt);
+
               const hasBeenReviewed = reviews.some(
                 (r) => r.swapRequestId === sr.id && r.authorId === currentUserId
               );
@@ -187,7 +208,7 @@ export default function ConnectionsPage() {
                 <Card key={sr.id} className="grid gap-4 lg:grid-cols-[1fr_auto]">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
-                      {statusBadge(sr.status)}
+                      {statusBadge(sr)}
                       <span className="text-xs font-bold text-[var(--muted)]">
                         Format: {sr.preferredFormat} · Updated {sr.updatedAt}
                       </span>
@@ -276,13 +297,19 @@ export default function ConnectionsPage() {
                       </Button>
                     )}
 
-                    {sr.status === "active" && (
+                    {(sr.status === "active" || (sr.status === "waiting_for_completion" && !myConfirmed)) && (
                       <Button
-                        onClick={() => updateSwapStatus(sr.id, "completed")}
+                        onClick={() => confirmSwapCompletion(sr.id)}
                         className="w-full text-xs justify-center bg-emerald-800 hover:bg-emerald-900 text-white"
                       >
-                        <CheckCircle size={14} className="mr-1 inline" /> Mark as Completed
+                        <CheckCircle size={14} className="mr-1 inline" /> Confirm Completion
                       </Button>
+                    )}
+
+                    {sr.status === "waiting_for_completion" && myConfirmed && (
+                      <div className="text-center text-xs font-bold text-amber-800 bg-amber-50 p-2 border border-amber-300">
+                        <Clock size={14} className="inline mr-1" /> Waiting for partner confirmation
+                      </div>
                     )}
 
                     {sr.status === "completed" && (
