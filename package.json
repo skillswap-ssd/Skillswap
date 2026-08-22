@@ -26,6 +26,7 @@
     "eslint-config-next": "latest",
     "tailwindcss": "latest",
     "typescript": "latest",
+    "vitest": "^4.1.11",
     "wrangler": "latest"
   },
   "engines": {
