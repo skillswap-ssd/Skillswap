@@ -34,7 +34,7 @@ export function validateCreditAccount(state: CreditEngineState, userId: ID): Val
   const audit = getCreditAudit(state, userId);
   if (!audit.reconciled) {
     errors.push(
-      `Reconciliation mismatch for user ${userId}: account.available (${account.available}) !== ledger computed (${audit.computedAvailable})`
+      `Reconciliation mismatch for user ${userId}: account.available (${account.available}) !== ledger computed (${audit.computedAvailable}) OR account.held (${account.held}) !== ledger computed (${audit.computedHeld})`
     );
   }
 
@@ -59,6 +59,13 @@ export function validateCreditAccount(state: CreditEngineState, userId: ID): Val
     if (tx.amount <= 0) {
       errors.push(`Invalid non-positive transaction amount (${tx.amount}) in transaction ${tx.id}`);
     }
+
+    if (tx.type === "cancellation_refund" && tx.reversesTransactionId) {
+      const origTx = state.transactions.find((t) => t.id === tx.reversesTransactionId);
+      if (!origTx) {
+        errors.push(`Refund transaction ${tx.id} references non-existent original transaction: ${tx.reversesTransactionId}`);
+      }
+    }
   }
 
   return {
@@ -78,9 +85,37 @@ export function validateEntireCreditSystem(state: CreditEngineState): Validation
     allWarnings.push(...res.warnings);
   }
 
+  // Ledger Semantic Validation for Holds, Settlements, & Rewards across system
+  for (const hold of state.holds) {
+    if (hold.status === "captured") {
+      const captureTx = state.transactions.find(
+        (t) => t.type === "hold_capture" && t.userId === hold.userId && t.referenceId === hold.referenceId
+      );
+      if (!captureTx) {
+        errorsPush(allErrors, `Missing capture transaction for captured hold ${hold.id}`);
+      }
+    } else if (hold.status === "released" || hold.status === "expired") {
+      const releaseTx = state.transactions.find(
+        (t) =>
+          (t.type === "hold_release" || t.type === "expired_release") &&
+          t.userId === hold.userId &&
+          t.referenceId === hold.referenceId
+      );
+      if (!releaseTx) {
+        errorsPush(allErrors, `Missing release transaction for ${hold.status} hold ${hold.id}`);
+      }
+    }
+  }
+
   return {
     valid: allErrors.length === 0,
     errors: allErrors,
     warnings: allWarnings,
   };
+}
+
+function errorsPush(arr: string[], msg: string) {
+  if (!arr.includes(msg)) {
+    arr.push(msg);
+  }
 }

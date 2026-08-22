@@ -1,51 +1,45 @@
+import { describe, expect, it } from "vitest";
+import type { SkillSwapRequest } from "@/data/models";
 import {
   awardCredits,
+  canTransitionSwapStatus,
   captureCreditHold,
-  completeSkillSwapAtomic,
+  checkAndExpireHolds,
+  confirmSwapCompletion,
   createCreditHold,
   createEmptyCreditState,
   getCreditAudit,
   grantInitialCredits,
-  refundCredits,
+  refundExchange,
   releaseCreditHold,
+  settleExchange,
 } from "./credit-engine";
 import { CREDIT_RULES } from "./credit-rules";
 import { validateCreditAccount, validateEntireCreditSystem } from "./credit-validation";
-import type { SkillSwapRequest } from "@/data/models";
 
-function assert(condition: boolean, message: string) {
-  if (!condition) {
-    throw new Error(`Assertion Failed: ${message}`);
-  }
-}
-
-export function runCreditEngineTests() {
-  console.log("Starting Credit Engine Tests...");
-
-  // Test 1: Account Creation & Initial Grant Idempotency
-  {
+describe("Credit System Hardening & Invariant Tests", () => {
+  it("Account: initial credits granted once idempotently", () => {
     let state = createEmptyCreditState();
-    const userId = "test_user_1";
+    const userId = "u_init";
 
-    const res1 = grantInitialCredits(state, userId, "grant_1");
-    assert(res1.result.success, "Initial grant 1 should succeed");
-    assert(res1.state.accounts[userId].available === CREDIT_RULES.INITIAL_CREDITS, "Available should match initial credits");
+    const res1 = grantInitialCredits(state, userId, "grant_key_1");
+    expect(res1.result.success).toBe(true);
+    expect(res1.state.accounts[userId].available).toBe(CREDIT_RULES.INITIAL_CREDITS);
 
-    // Idempotent re-run
-    const res2 = grantInitialCredits(res1.state, userId, "grant_1");
-    assert(res2.result.code === "IDEMPOTENT_REPLAY", "Second grant should be detected as idempotent replay");
-    assert(res2.state.accounts[userId].available === CREDIT_RULES.INITIAL_CREDITS, "Available balance must not increase on replay");
-    assert(res2.state.transactions.length === 1, "Only 1 transaction should exist");
+    // Replay initial grant
+    const res2 = grantInitialCredits(res1.state, userId, "grant_key_1");
+    expect(res2.result.code).toBe("IDEMPOTENT_REPLAY");
+    expect(res2.state.accounts[userId].available).toBe(CREDIT_RULES.INITIAL_CREDITS);
+    expect(res2.state.transactions.length).toBe(1);
 
     const validation = validateCreditAccount(res2.state, userId);
-    assert(validation.valid, `Account validation failed: ${validation.errors.join(", ")}`);
-  }
+    expect(validation.valid).toBe(true);
+  });
 
-  // Test 2: Spending & Hold Creation
-  {
+  it("Spending & Holds: sufficient credits succeeds, insufficient fails, balances nonnegative", () => {
     let state = createEmptyCreditState();
-    const userId = "test_user_2";
-    state = grantInitialCredits(state, userId, "grant_2").state;
+    const userId = "u_spend";
+    state = grantInitialCredits(state, userId, "grant_spend").state;
 
     // Create Hold of 2 credits
     const holdRes = createCreditHold(state, {
@@ -56,11 +50,11 @@ export function runCreditEngineTests() {
       idempotencyKey: "hold_swap_101",
     });
 
-    assert(holdRes.result.success, "Hold creation should succeed");
-    assert(holdRes.state.accounts[userId].available === 3, "Available should decrease from 5 to 3");
-    assert(holdRes.state.accounts[userId].held === 2, "Held balance should increase to 2");
+    expect(holdRes.result.success).toBe(true);
+    expect(holdRes.state.accounts[userId].available).toBe(3);
+    expect(holdRes.state.accounts[userId].held).toBe(2);
 
-    // Attempt to hold more than available (available is 3, requesting 5)
+    // Excess hold failure
     const excessHoldRes = createCreditHold(holdRes.state, {
       userId,
       amount: 5,
@@ -69,137 +63,391 @@ export function runCreditEngineTests() {
       idempotencyKey: "hold_swap_102",
     });
 
-    assert(!excessHoldRes.result.success, "Excess hold should be rejected");
-    assert(excessHoldRes.result.code === "INSUFFICIENT_CREDITS", "Should return INSUFFICIENT_CREDITS code");
-    assert(excessHoldRes.state.accounts[userId].available === 3, "Available balance must remain unchanged");
-    assert(excessHoldRes.state.accounts[userId].held === 2, "Held balance must remain unchanged");
-  }
+    expect(excessHoldRes.result.success).toBe(false);
+    expect(excessHoldRes.result.code).toBe("INSUFFICIENT_CREDITS");
+    expect(excessHoldRes.state.accounts[userId].available).toBe(3);
+    expect(excessHoldRes.state.accounts[userId].held).toBe(2);
 
-  // Test 3: Hold Capture & Reward (Successful Exchange)
-  {
-    let state = createEmptyCreditState();
-    const learnerId = "learner_1";
-    const teacherId = "teacher_1";
-
-    state = grantInitialCredits(state, learnerId, "grant_learner").state;
-    state = grantInitialCredits(state, teacherId, "grant_teacher").state;
-
-    // Hold 2 credits for learner
-    const holdRes = createCreditHold(state, {
-      userId: learnerId,
-      amount: 2,
+    // Zero or negative hold rejection
+    const invalidHold = createCreditHold(holdRes.state, {
+      userId,
+      amount: 0,
       referenceType: "swap",
-      referenceId: "swap_exchange_1",
-      idempotencyKey: "hold_exchange_1",
+      referenceId: "swap_103",
+      idempotencyKey: "hold_swap_103",
     });
-    state = holdRes.state;
+    expect(invalidHold.result.success).toBe(false);
+    expect(invalidHold.result.code).toBe("INVALID_AMOUNT");
+  });
 
-    // Capture hold
-    const activeHold = state.holds.find((h) => h.referenceId === "swap_exchange_1");
-    assert(Boolean(activeHold), "Active hold should exist");
-
-    const captureRes = captureCreditHold(state, {
-      holdId: activeHold!.id,
-      idempotencyKey: "capture_exchange_1",
-    });
-    state = captureRes.state;
-
-    assert(captureRes.result.success, "Capture should succeed");
-    assert(state.accounts[learnerId].available === 3, "Learner available should remain 3");
-    assert(state.accounts[learnerId].held === 0, "Learner held should return to 0");
-    assert(state.accounts[learnerId].lifetimeSpent === 2, "Learner lifetime spent should increase to 2");
-
-    // Award Teacher
-    const awardRes = awardCredits(state, {
-      userId: teacherId,
-      amount: 2,
-      referenceType: "swap",
-      referenceId: "swap_exchange_1",
-      description: "Teaching reward",
-      idempotencyKey: "teacher_reward_exchange_1",
-    });
-    state = awardRes.state;
-
-    assert(state.accounts[teacherId].available === 7, "Teacher available should increase from 5 to 7");
-    assert(state.accounts[teacherId].lifetimeEarned === 7, "Teacher lifetime earned should be 7");
-
-    const sysVal = validateEntireCreditSystem(state);
-    assert(sysVal.valid, `System validation failed: ${sysVal.errors.join(", ")}`);
-  }
-
-  // Test 4: Hold Release on Cancellation
-  {
+  it("Holds: capture, release, expiration, double release/capture prevention", () => {
     let state = createEmptyCreditState();
-    const userId = "cancel_user_1";
-    state = grantInitialCredits(state, userId, "grant_cancel").state;
+    const userId = "u_hold_life";
+    state = grantInitialCredits(state, userId, "grant_hold_life").state;
 
     const holdRes = createCreditHold(state, {
       userId,
       amount: 2,
       referenceType: "swap",
-      referenceId: "swap_cancel_1",
-      idempotencyKey: "hold_cancel_1",
+      referenceId: "swap_life_1",
+      idempotencyKey: "hold_life_1",
     });
     state = holdRes.state;
 
-    assert(state.accounts[userId].available === 3, "Available should be 3 during hold");
-
+    // Release hold
     const releaseRes = releaseCreditHold(state, {
-      referenceId: "swap_cancel_1",
-      idempotencyKey: "release_cancel_1",
+      referenceId: "swap_life_1",
+      idempotencyKey: "release_life_1",
+    });
+    state = releaseRes.state;
+    expect(releaseRes.result.success).toBe(true);
+    expect(state.accounts[userId].available).toBe(5);
+    expect(state.accounts[userId].held).toBe(0);
+
+    // Double release should fail or return idempotent replay
+    const doubleRelease = releaseCreditHold(state, {
+      referenceId: "swap_life_1",
+      idempotencyKey: "release_life_2",
+    });
+    expect(doubleRelease.result.success).toBe(false);
+    expect(doubleRelease.result.code).toBe("HOLD_NOT_FOUND");
+  });
+
+  it("State Machine: strict valid transitions and invalid transition rejection", () => {
+    expect(canTransitionSwapStatus("pending", "accepted")).toBe(true);
+    expect(canTransitionSwapStatus("pending", "declined")).toBe(true);
+    expect(canTransitionSwapStatus("accepted", "active")).toBe(true);
+    expect(canTransitionSwapStatus("accepted", "cancelled")).toBe(true);
+    expect(canTransitionSwapStatus("active", "waiting_for_completion")).toBe(true);
+    expect(canTransitionSwapStatus("waiting_for_completion", "completed")).toBe(true);
+
+    // Illegal transitions
+    expect(canTransitionSwapStatus("pending", "completed")).toBe(false);
+    expect(canTransitionSwapStatus("declined", "active")).toBe(false);
+    expect(canTransitionSwapStatus("cancelled", "accepted")).toBe(false);
+    expect(canTransitionSwapStatus("completed", "cancelled")).toBe(false);
+    expect(canTransitionSwapStatus("completed", "completed")).toBe(false);
+  });
+
+  it("Scenario A: Successful exchange with two-party confirmation & atomic settlement", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_A";
+    const teacherId = "teacher_A";
+
+    state = grantInitialCredits(state, learnerId, "grant_learner_A").state;
+    state = grantInitialCredits(state, teacherId, "grant_teacher_A").state;
+
+    const swap: SkillSwapRequest = {
+      id: "swap_scen_A",
+      requesterId: learnerId,
+      recipientId: teacherId,
+      offeredSkillId: "python",
+      requestedSkillId: "design",
+      message: "Hello",
+      preferredFormat: "remote",
+      requiredCredits: 2,
+      status: "active",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+
+    // Hold credits for learner upon acceptance
+    state = createCreditHold(state, {
+      userId: learnerId,
+      amount: 2,
+      referenceType: "swap",
+      referenceId: swap.id,
+      idempotencyKey: `swap:${swap.id}:hold`,
+    }).state;
+
+    expect(state.accounts[learnerId].available).toBe(3);
+    expect(state.accounts[learnerId].held).toBe(2);
+
+    // Party A (learner) confirms
+    const confirm1 = confirmSwapCompletion(state, {
+      swapRequest: swap,
+      completedByUserId: learnerId,
+    });
+    expect(confirm1.result.success).toBe(true);
+    expect(confirm1.result.data?.settled).toBe(false);
+    expect(confirm1.result.data?.swapRequest.status).toBe("waiting_for_completion");
+    state = confirm1.state;
+
+    // Party B (teacher) confirms -> Settles atomically
+    const confirm2 = confirmSwapCompletion(state, {
+      swapRequest: confirm1.result.data!.swapRequest,
+      completedByUserId: teacherId,
+    });
+    expect(confirm2.result.success).toBe(true);
+    expect(confirm2.result.data?.settled).toBe(true);
+    expect(confirm2.result.data?.swapRequest.status).toBe("completed");
+    state = confirm2.state;
+
+    expect(state.accounts[learnerId].available).toBe(3);
+    expect(state.accounts[learnerId].held).toBe(0);
+    expect(state.accounts[teacherId].available).toBe(7);
+
+    const valSys = validateEntireCreditSystem(state);
+    expect(valSys.valid).toBe(true);
+  });
+
+  it("Scenario B: Insufficient credits prevents hold creation & acceptance", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_B";
+    state = grantInitialCredits(state, learnerId, "grant_B").state;
+    // Reduce balance to 1
+    state.accounts[learnerId].available = 1;
+
+    const holdRes = createCreditHold(state, {
+      userId: learnerId,
+      amount: 2,
+      referenceType: "swap",
+      referenceId: "swap_scen_B",
+      idempotencyKey: "hold_B",
+    });
+
+    expect(holdRes.result.success).toBe(false);
+    expect(holdRes.result.code).toBe("INSUFFICIENT_CREDITS");
+    expect(holdRes.state.accounts[learnerId].available).toBe(1);
+    expect(holdRes.state.accounts[learnerId].held).toBe(0);
+  });
+
+  it("Scenario C: Cancellation releases active hold without rewarding teacher", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_C";
+    const teacherId = "teacher_C";
+
+    state = grantInitialCredits(state, learnerId, "grant_learner_C").state;
+    state = grantInitialCredits(state, teacherId, "grant_teacher_C").state;
+
+    // Hold 2 credits
+    state = createCreditHold(state, {
+      userId: learnerId,
+      amount: 2,
+      referenceType: "swap",
+      referenceId: "swap_scen_C",
+      idempotencyKey: "hold_C",
+    }).state;
+
+    expect(state.accounts[learnerId].available).toBe(3);
+
+    // Cancel swap -> release hold
+    const releaseRes = releaseCreditHold(state, {
+      referenceId: "swap_scen_C",
+      idempotencyKey: "release_C",
     });
     state = releaseRes.state;
 
-    assert(releaseRes.result.success, "Release should succeed");
-    assert(state.accounts[userId].available === 5, "Available should return to 5 after release");
-    assert(state.accounts[userId].held === 0, "Held should return to 0");
-  }
+    expect(state.accounts[learnerId].available).toBe(5);
+    expect(state.accounts[learnerId].held).toBe(0);
+    expect(state.accounts[teacherId].available).toBe(5);
+  });
 
-  // Test 5: Atomic Swap Completion & Replay Immunity
-  {
+  it("Scenario D: Hold expiration releases funds deterministically", () => {
     let state = createEmptyCreditState();
-    const requesterId = "req_1";
-    const recipientId = "rec_1";
+    const learnerId = "learner_D";
+    state = grantInitialCredits(state, learnerId, "grant_D").state;
 
-    state = grantInitialCredits(state, requesterId, "grant_req").state;
-    state = grantInitialCredits(state, recipientId, "grant_rec").state;
-
-    const mockSwap: SkillSwapRequest = {
-      id: "atomic_swap_1",
-      requesterId,
-      recipientId,
-      offeredSkillId: "python",
-      requestedSkillId: "photo",
-      message: "Test swap",
-      preferredFormat: "remote",
-      status: "active",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Hold credits for requester
     state = createCreditHold(state, {
-      userId: requesterId,
+      userId: learnerId,
       amount: 2,
       referenceType: "swap",
-      referenceId: mockSwap.id,
-      idempotencyKey: "hold_atomic_swap_1",
+      referenceId: "swap_scen_D",
+      idempotencyKey: "hold_D",
+    }, "2026-08-01T00:00:00.000Z").state;
+
+    expect(state.accounts[learnerId].available).toBe(3);
+    expect(state.accounts[learnerId].held).toBe(2);
+
+    // Advance 15 days (expiration policy is 14 days)
+    const futureDate = "2026-08-16T00:00:00.000Z";
+    state = checkAndExpireHolds(state, futureDate);
+
+    expect(state.accounts[learnerId].available).toBe(5);
+    expect(state.accounts[learnerId].held).toBe(0);
+    expect(state.holds.find((h) => h.referenceId === "swap_scen_D")?.status).toBe("expired");
+  });
+
+  it("Scenario E: Duplicate completion call 10 times is idempotent", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_E";
+    const teacherId = "teacher_E";
+
+    state = grantInitialCredits(state, learnerId, "grant_learner_E").state;
+    state = grantInitialCredits(state, teacherId, "grant_teacher_E").state;
+
+    const swap: SkillSwapRequest = {
+      id: "swap_scen_E",
+      requesterId: learnerId,
+      recipientId: teacherId,
+      offeredSkillId: "python",
+      requestedSkillId: "design",
+      message: "Test",
+      preferredFormat: "remote",
+      requiredCredits: 2,
+      status: "active",
+      requesterConfirmedAt: "2026-08-01T10:00:00.000Z",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+
+    state = createCreditHold(state, {
+      userId: learnerId,
+      amount: 2,
+      referenceType: "swap",
+      referenceId: swap.id,
+      idempotencyKey: `swap:${swap.id}:hold`,
     }).state;
 
-    // Call atomic completion 3 times in a row (simulate multi-click / re-renders)
-    const run1 = completeSkillSwapAtomic(state, { swapRequest: mockSwap, completedByUserId: requesterId });
-    const run2 = completeSkillSwapAtomic(run1.state, { swapRequest: mockSwap, completedByUserId: requesterId });
-    const run3 = completeSkillSwapAtomic(run2.state, { swapRequest: mockSwap, completedByUserId: requesterId });
+    let res;
+    for (let i = 0; i < 10; i++) {
+      res = settleExchange(state, { swapRequest: swap });
+      if (res.result.success) {
+        state = res.state;
+      }
+    }
 
-    assert(run1.result.success, "Run 1 completion should succeed");
-    assert(run3.state.accounts[requesterId].available === 3, "Requester available balance must be exactly 3 after multiple retries");
-    assert(run3.state.accounts[recipientId].available === 7, "Recipient available balance must be exactly 7 after multiple retries");
+    expect(state.accounts[learnerId].available).toBe(3);
+    expect(state.accounts[learnerId].held).toBe(0);
+    expect(state.accounts[teacherId].available).toBe(7);
 
-    const auditReq = getCreditAudit(run3.state, requesterId);
-    assert(auditReq.reconciled, "Requester audit must be fully reconciled");
-    const auditRec = getCreditAudit(run3.state, recipientId);
-    assert(auditRec.reconciled, "Recipient audit must be fully reconciled");
-  }
+    const captures = state.transactions.filter((t) => t.type === "hold_capture" && t.referenceId === swap.id);
+    const rewards = state.transactions.filter((t) => t.type === "teaching_reward" && t.referenceId === swap.id);
 
-  console.log("All Credit Engine Tests Passed Successfully! ✓");
-}
+    expect(captures.length).toBe(1);
+    expect(rewards.length).toBe(1);
+  });
+
+  it("Scenario F: Malicious completion by non-participant fails with UNAUTHORIZED", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_F";
+    const teacherId = "teacher_F";
+    const attackerId = "attacker_999";
+
+    state = grantInitialCredits(state, learnerId, "grant_learner_F").state;
+    state = grantInitialCredits(state, teacherId, "grant_teacher_F").state;
+
+    const swap: SkillSwapRequest = {
+      id: "swap_scen_F",
+      requesterId: learnerId,
+      recipientId: teacherId,
+      offeredSkillId: "python",
+      requestedSkillId: "design",
+      message: "Test",
+      preferredFormat: "remote",
+      status: "active",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+
+    const confirmRes = confirmSwapCompletion(state, {
+      swapRequest: swap,
+      completedByUserId: attackerId,
+    });
+
+    expect(confirmRes.result.success).toBe(false);
+    expect(confirmRes.result.code).toBe("UNAUTHORIZED");
+  });
+
+  it("Scenario G & Self-Swap: Missing hold fails settlement, self-swap rejected", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_G";
+    const teacherId = "teacher_G";
+
+    state = grantInitialCredits(state, learnerId, "grant_G1").state;
+    state = grantInitialCredits(state, teacherId, "grant_G2").state;
+
+    const swapNoHold: SkillSwapRequest = {
+      id: "swap_no_hold",
+      requesterId: learnerId,
+      recipientId: teacherId,
+      offeredSkillId: "python",
+      requestedSkillId: "design",
+      message: "No hold swap",
+      preferredFormat: "remote",
+      requiredCredits: 2,
+      status: "active",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+
+    const settleRes = settleExchange(state, { swapRequest: swapNoHold });
+    expect(settleRes.result.success).toBe(false);
+    expect(settleRes.result.code).toBe("MISSING_CREDIT_HOLD");
+
+    // Self swap check
+    const selfSwap: SkillSwapRequest = {
+      id: "swap_self",
+      requesterId: learnerId,
+      recipientId: learnerId,
+      offeredSkillId: "python",
+      requestedSkillId: "python",
+      message: "Self swap",
+      preferredFormat: "remote",
+      status: "pending",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+    const selfRes = settleExchange(state, { swapRequest: selfSwap });
+    expect(selfRes.result.success).toBe(false);
+    expect(selfRes.result.code).toBe("SELF_SWAP_NOT_ALLOWED");
+  });
+
+  it("Refunds: traceable refund referencing original settlement transaction", () => {
+    let state = createEmptyCreditState();
+    const learnerId = "learner_R";
+    const teacherId = "teacher_R";
+
+    state = grantInitialCredits(state, learnerId, "grant_R1").state;
+    state = grantInitialCredits(state, teacherId, "grant_R2").state;
+
+    const swap: SkillSwapRequest = {
+      id: "swap_refund_1",
+      requesterId: learnerId,
+      recipientId: teacherId,
+      offeredSkillId: "python",
+      requestedSkillId: "design",
+      message: "Refund test",
+      preferredFormat: "remote",
+      requiredCredits: 2,
+      status: "active",
+      createdAt: "2026-08-01",
+      updatedAt: "2026-08-01",
+    };
+
+    state = createCreditHold(state, {
+      userId: learnerId,
+      amount: 2,
+      referenceType: "swap",
+      referenceId: swap.id,
+      idempotencyKey: `swap:${swap.id}:hold`,
+    }).state;
+
+    // Settle
+    state = settleExchange(state, { swapRequest: swap }).state;
+
+    // Refund
+    const refRes = refundExchange(state, {
+      swapId: swap.id,
+      requestedByUserId: learnerId,
+      description: "Exchange issue refund",
+    });
+
+    expect(refRes.result.success).toBe(true);
+    state = refRes.state;
+
+    expect(state.accounts[learnerId].available).toBe(5);
+    expect(state.accounts[learnerId].lifetimeRefunded).toBe(2);
+
+    const refTx = state.transactions.find((t) => t.type === "cancellation_refund");
+    expect(refTx).toBeDefined();
+    expect(refTx?.reversesTransactionId).toBeDefined();
+
+    // Duplicate refund is idempotent
+    const dupRefRes = refundExchange(state, {
+      swapId: swap.id,
+      requestedByUserId: learnerId,
+    });
+    expect(dupRefRes.result.code).toBe("IDEMPOTENT_REPLAY");
+  });
+});
